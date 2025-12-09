@@ -1,13 +1,13 @@
 import { motion } from "framer-motion";
 import { StoreCard } from "./StoreCard";
-import { Loader2, Store } from "lucide-react";
+import { Loader2, Store, ShoppingBag } from "lucide-react";
 
 interface SearchResultsProps {
   isLoading: boolean;
   results: Array<{
     id: string;
     name: string;
-    image: string;
+    image?: string;
     productImage: string;
     productName: string;
     priceRange: string;
@@ -37,9 +37,9 @@ export const SearchResults = ({ isLoading, results }: SearchResultsProps) => {
           />
         </div>
         <div className="text-center">
-          <p className="font-display text-lg text-foreground">Analisando sua roupa...</p>
+          <p className="font-display text-lg text-foreground">Analisando sua roupa com IA...</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Buscando em lojas próximas
+            Identificando tipo, cor e estilo
           </p>
         </div>
       </motion.div>
@@ -59,7 +59,7 @@ export const SearchResults = ({ isLoading, results }: SearchResultsProps) => {
         <div className="text-center">
           <p className="font-display text-lg text-foreground">Envie uma foto</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Encontraremos roupas similares perto de você
+            A IA vai analisar e buscar produtos similares à venda
           </p>
         </div>
       </motion.div>
@@ -75,16 +75,19 @@ export const SearchResults = ({ isLoading, results }: SearchResultsProps) => {
     >
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-display text-2xl font-semibold text-foreground">
-            Encontramos {results.length} opções
-          </h2>
+          <div className="flex items-center gap-2">
+            <ShoppingBag className="w-5 h-5 text-primary" />
+            <h2 className="font-display text-2xl font-semibold text-foreground">
+              {results.length} produtos encontrados
+            </h2>
+          </div>
           <p className="text-sm text-muted-foreground mt-1">
-            Roupas similares em lojas próximas a você
+            Produtos reais à venda com base na sua imagem
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {results.map((store, index) => (
           <StoreCard key={store.id} store={store} index={index} />
         ))}
