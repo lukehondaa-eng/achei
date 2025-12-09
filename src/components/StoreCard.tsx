@@ -7,7 +7,7 @@ interface StoreCardProps {
   store: {
     id: string;
     name: string;
-    image: string;
+    image?: string;
     productImage: string;
     productName: string;
     priceRange: string;
