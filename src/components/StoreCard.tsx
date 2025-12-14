@@ -72,20 +72,20 @@ export const StoreCard = ({ store, index }: StoreCardProps) => {
             <MapPin className="w-4 h-4 mr-2" />
             Ver no mapa
           </Button>
-          <a
-            href={store.onlineLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1"
+        <a
+          href={store.onlineLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1"
+        >
+          <Button
+            size="sm"
+            className="w-full rounded-xl h-10 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-sm gap-1.5"
           >
-            <Button
-              size="sm"
-              className="w-full rounded-xl h-10 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-sm"
-            >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Comprar
-            </Button>
-          </a>
+            <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="truncate">Comprar</span>
+          </Button>
+        </a>
         </div>
       </div>
     </motion.div>
