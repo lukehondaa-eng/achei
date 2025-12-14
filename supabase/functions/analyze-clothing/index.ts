@@ -118,23 +118,28 @@ Responda APENAS com o JSON, sem markdown ou texto adicional.`
         
         if (serpData.shopping_results) {
           products = serpData.shopping_results.slice(0, 8).map((item: any, index: number) => {
-            // Priorizar o link direto da loja; usar Google Shopping só como fallback
-            const storeLink = item.link as string | undefined;
-            const googleProductLink = item.product_link as string | undefined;
-            const finalLink = storeLink || googleProductLink;
+            // SerpAPI Google Shopping: o link direto da loja está em "source_link" ou dentro de "extensions"
+            // Fallback: criar busca direta no Google com nome do produto + loja
+            const directStoreLink = item.source_link || item.link;
+            const storeName = item.source || "Loja";
+            const productTitle = item.title || clothingInfo.searchQuery;
+            
+            // Se não tiver link direto, buscar o produto na loja via Google
+            const searchFallback = `https://www.google.com/search?q=${encodeURIComponent(productTitle + " " + storeName + " comprar")}`;
+            const finalLink = directStoreLink || searchFallback;
 
-            console.log(`Product ${index} store link:`, storeLink);
-            console.log(`Product ${index} google product link:`, googleProductLink);
+            console.log(`Product ${index} - source: ${storeName}, source_link: ${item.source_link}, link: ${item.link}`);
+            console.log(`Product ${index} - final link: ${finalLink}`);
             
             return {
               id: `product-${index}`,
-              name: item.source || "Loja Online",
+              name: storeName,
               productImage: item.thumbnail || "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400",
-              productName: item.title || "Produto Similar",
+              productName: productTitle,
               priceRange: item.price || "Consulte",
               distance: "Online",
-              address: item.source || "Loja Online",
-              onlineLink: finalLink || `https://www.google.com/search?q=${encodeURIComponent(item.title || clothingInfo.searchQuery)}`,
+              address: storeName,
+              onlineLink: finalLink,
               similarity: Math.max(70, 95 - (index * 3)),
             };
           });
