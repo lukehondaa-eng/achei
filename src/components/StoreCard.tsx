@@ -62,24 +62,30 @@ export const StoreCard = ({ store, index }: StoreCardProps) => {
           <span className="line-clamp-2">{store.address}</span>
         </div>
 
-        <div className="flex gap-2 pt-2">
+        <div className="flex gap-3 pt-3 border-t border-border">
           <Button
             variant="outline"
             size="sm"
-            className="flex-1 rounded-xl"
+            className="flex-1 rounded-xl h-10 text-sm font-medium border-border hover:bg-secondary hover:border-primary/30 transition-all"
             onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.address)}`, '_blank')}
           >
             <MapPin className="w-4 h-4 mr-2" />
             Ver no mapa
           </Button>
-          <Button
-            size="sm"
-            className="flex-1 rounded-xl gradient-coral text-primary-foreground hover:opacity-90"
-            onClick={() => window.open(store.onlineLink, '_blank')}
+          <a
+            href={store.onlineLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1"
           >
-            <ExternalLink className="w-4 h-4 mr-2" />
-            Comprar
-          </Button>
+            <Button
+              size="sm"
+              className="w-full rounded-xl h-10 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-sm"
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Comprar
+            </Button>
+          </a>
         </div>
       </div>
     </motion.div>
