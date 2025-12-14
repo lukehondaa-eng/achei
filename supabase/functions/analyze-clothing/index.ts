@@ -114,18 +114,26 @@ Responda APENAS com o JSON, sem markdown ou texto adicional.`
         const serpResponse = await fetch(serpUrl);
         const serpData = await serpResponse.json();
         
+        console.log("SerpAPI response:", JSON.stringify(serpData.shopping_results?.slice(0, 2)));
+        
         if (serpData.shopping_results) {
-          products = serpData.shopping_results.slice(0, 8).map((item: any, index: number) => ({
-            id: `product-${index}`,
-            name: item.source || "Loja Online",
-            productImage: item.thumbnail || "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400",
-            productName: item.title || "Produto Similar",
-            priceRange: item.price || "Consulte",
-            distance: "Online",
-            address: item.source || "Loja Online",
-            onlineLink: item.link || "#",
-            similarity: Math.max(70, 95 - (index * 3)),
-          }));
+          products = serpData.shopping_results.slice(0, 8).map((item: any, index: number) => {
+            // SerpAPI pode retornar o link em diferentes campos
+            const productLink = item.product_link || item.link || item.serpapi_product_api;
+            console.log(`Product ${index} link:`, productLink);
+            
+            return {
+              id: `product-${index}`,
+              name: item.source || "Loja Online",
+              productImage: item.thumbnail || "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400",
+              productName: item.title || "Produto Similar",
+              priceRange: item.price || "Consulte",
+              distance: "Online",
+              address: item.source || "Loja Online",
+              onlineLink: productLink || `https://www.google.com/search?q=${encodeURIComponent(item.title || clothingInfo.searchQuery)}`,
+              similarity: Math.max(70, 95 - (index * 3)),
+            };
+          });
         }
       } catch (e) {
         console.error("SerpAPI error:", e);
