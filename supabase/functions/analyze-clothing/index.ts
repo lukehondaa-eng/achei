@@ -118,9 +118,13 @@ Responda APENAS com o JSON, sem markdown ou texto adicional.`
         
         if (serpData.shopping_results) {
           products = serpData.shopping_results.slice(0, 8).map((item: any, index: number) => {
-            // SerpAPI pode retornar o link em diferentes campos
-            const productLink = item.product_link || item.link || item.serpapi_product_api;
-            console.log(`Product ${index} link:`, productLink);
+            // Priorizar o link direto da loja; usar Google Shopping só como fallback
+            const storeLink = item.link as string | undefined;
+            const googleProductLink = item.product_link as string | undefined;
+            const finalLink = storeLink || googleProductLink;
+
+            console.log(`Product ${index} store link:`, storeLink);
+            console.log(`Product ${index} google product link:`, googleProductLink);
             
             return {
               id: `product-${index}`,
@@ -130,7 +134,7 @@ Responda APENAS com o JSON, sem markdown ou texto adicional.`
               priceRange: item.price || "Consulte",
               distance: "Online",
               address: item.source || "Loja Online",
-              onlineLink: productLink || `https://www.google.com/search?q=${encodeURIComponent(item.title || clothingInfo.searchQuery)}`,
+              onlineLink: finalLink || `https://www.google.com/search?q=${encodeURIComponent(item.title || clothingInfo.searchQuery)}`,
               similarity: Math.max(70, 95 - (index * 3)),
             };
           });
