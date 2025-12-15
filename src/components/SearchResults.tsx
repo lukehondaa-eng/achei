@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { StoreCard } from "./StoreCard";
-import { Loader2, Store, ShoppingBag } from "lucide-react";
+import { Loader2, Store, ShoppingBag, RefreshCw } from "lucide-react";
+import { Button } from "./ui/button";
 
 interface SearchResultsProps {
   isLoading: boolean;
@@ -16,9 +17,10 @@ interface SearchResultsProps {
     onlineLink: string;
     similarity: number;
   }>;
+  onRetry?: () => void;
 }
 
-export const SearchResults = ({ isLoading, results }: SearchResultsProps) => {
+export const SearchResults = ({ isLoading, results, onRetry }: SearchResultsProps) => {
   if (isLoading) {
     return (
       <motion.div
@@ -73,7 +75,7 @@ export const SearchResults = ({ isLoading, results }: SearchResultsProps) => {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-2">
             <ShoppingBag className="w-5 h-5 text-primary" />
@@ -85,6 +87,12 @@ export const SearchResults = ({ isLoading, results }: SearchResultsProps) => {
             Produtos reais à venda com base na sua imagem
           </p>
         </div>
+        {onRetry && (
+          <Button variant="outline" onClick={onRetry} className="gap-2">
+            <RefreshCw className="w-4 h-4" />
+            Refazer busca
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
