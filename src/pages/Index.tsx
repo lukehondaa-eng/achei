@@ -101,6 +101,40 @@ const Index = () => {
     }
   }, [toast]);
 
+  const handleRetry = useCallback(() => {
+    if (uploadedImage) {
+      // Re-trigger the search with the same image
+      setIsLoading(true);
+      setResults([]);
+      setError(null);
+      
+      supabase.functions.invoke('analyze-clothing', {
+        body: { 
+          imageBase64: uploadedImage,
+          location: "São Paulo, Brazil"
+        }
+      }).then(({ data, error }) => {
+        if (error || data.error) {
+          setError(data?.error || "Falha ao analisar imagem. Tente novamente.");
+          toast({
+            title: "Erro",
+            description: data?.error || "Falha ao analisar imagem.",
+            variant: "destructive",
+          });
+        } else {
+          if (data.analysis) setAnalysis(data.analysis);
+          if (data.products?.length > 0) {
+            setResults(data.products);
+            toast({
+              title: "Sucesso!",
+              description: `Encontramos ${data.products.length} produtos similares.`,
+            });
+          }
+        }
+      }).finally(() => setIsLoading(false));
+    }
+  }, [uploadedImage, toast]);
+
   const handleClear = useCallback(() => {
     setUploadedImage(null);
     setResults([]);
@@ -159,7 +193,7 @@ const Index = () => {
           </div>
         )}
 
-        <SearchResults isLoading={isLoading} results={results} />
+        <SearchResults isLoading={isLoading} results={results} onRetry={handleRetry} />
       </div>
 
       <footer className="border-t border-border py-8 mt-auto">
