@@ -176,15 +176,18 @@ Responda APENAS com o JSON, sem markdown ou texto adicional.`
             };
           };
           
-          const productPromises = serpData.shopping_results.slice(0, 10).map(async (item: any, index: number) => {
+          // Filtrar apenas produtos com imagem real
+          const validResults = serpData.shopping_results.filter((item: any) => item.thumbnail);
+          
+          const productPromises = validResults.slice(0, 10).map(async (item: any, index: number) => {
             const details = await getProductDetails(item);
             
-            console.log(`Product ${index} - source: ${details.storeName}, final link: ${details.finalLink}`);
+            console.log(`Product ${index} - source: ${details.storeName}, thumbnail: ${item.thumbnail}, final link: ${details.finalLink}`);
             
             return {
               id: `product-${index}`,
               name: details.storeName,
-              productImage: item.thumbnail || "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400",
+              productImage: item.thumbnail, // Foto real do produto da SerpAPI
               productName: details.productTitle,
               priceRange: item.price || "Consulte",
               distance: "Online",
