@@ -33,15 +33,17 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `Você é um especialista em moda. Analise a imagem de roupa e retorne APENAS um JSON com:
+            content: `Você é um especialista em moda brasileiro. Analise a imagem de roupa com MÁXIMO DETALHE e retorne APENAS um JSON com:
 {
-  "type": "tipo da peça (ex: blazer, vestido, calça)",
-  "color": "cor principal em português",
-  "style": "estilo (ex: casual, formal, esportivo)",
-  "material": "material aparente se identificável",
-  "details": "detalhes importantes (botões, estampa, corte)",
-  "searchQuery": "query otimizada para buscar esta roupa em lojas brasileiras"
+  "type": "tipo EXATO da peça (ex: camisa polo, blazer slim fit, vestido midi, calça skinny)",
+  "color": "cor EXATA em português (ex: vinho, azul marinho, verde musgo)",
+  "style": "estilo específico (ex: casual, formal, esportivo, streetwear)",
+  "material": "material aparente (ex: algodão piqué, jeans, linho, couro)",
+  "details": "todos os detalhes visuais (gola, botões, estampa, corte, acabamentos)",
+  "brand": "marca se visível no produto",
+  "searchQuery": "query MUITO ESPECÍFICA para encontrar EXATAMENTE esta peça em lojas brasileiras online, incluindo tipo, cor, material e detalhes principais"
 }
+Seja EXTREMAMENTE específico na searchQuery para encontrar produtos o mais similares possível.
 Responda APENAS com o JSON, sem markdown ou texto adicional.`
           },
           {
@@ -107,8 +109,9 @@ Responda APENAS com o JSON, sem markdown ou texto adicional.`
     
     if (SERPAPI_KEY) {
       console.log("Searching products with SerpAPI...");
-      const searchQuery = encodeURIComponent(`${clothingInfo.searchQuery} comprar brasil`);
-      const serpUrl = `https://serpapi.com/search.json?engine=google_shopping&q=${searchQuery}&location=${encodeURIComponent(location || 'São Paulo, Brazil')}&hl=pt&gl=br&api_key=${SERPAPI_KEY}`;
+      // Query mais específica para produtos muito similares
+      const searchQuery = encodeURIComponent(`${clothingInfo.searchQuery}`);
+      const serpUrl = `https://serpapi.com/search.json?engine=google_shopping&q=${searchQuery}&location=${encodeURIComponent(location || 'São Paulo, Brazil')}&hl=pt&gl=br&num=20&api_key=${SERPAPI_KEY}`;
       
       try {
         const serpResponse = await fetch(serpUrl);
@@ -117,32 +120,81 @@ Responda APENAS com o JSON, sem markdown ou texto adicional.`
         console.log("SerpAPI response:", JSON.stringify(serpData.shopping_results?.slice(0, 2)));
         
         if (serpData.shopping_results) {
-          products = serpData.shopping_results.slice(0, 8).map((item: any, index: number) => {
-            // SerpAPI Google Shopping: o link direto da loja está em "source_link" ou dentro de "extensions"
-            // Fallback: criar busca direta no Google com nome do produto + loja
-            const directStoreLink = item.source_link || item.link;
+          // Buscar detalhes do produto para obter link direto da loja
+          const getProductDetails = async (item: any) => {
+            // SerpAPI retorna product_link que leva ao Google Shopping
+            // Para link direto, precisamos usar a immersive product API
+            // Por enquanto, criar um link de busca site-specific
             const storeName = item.source || "Loja";
             const productTitle = item.title || clothingInfo.searchQuery;
             
-            // Se não tiver link direto, buscar o produto na loja via Google
-            const searchFallback = `https://www.google.com/search?q=${encodeURIComponent(productTitle + " " + storeName + " comprar")}`;
-            const finalLink = directStoreLink || searchFallback;
-
-            console.log(`Product ${index} - source: ${storeName}, source_link: ${item.source_link}, link: ${item.link}`);
-            console.log(`Product ${index} - final link: ${finalLink}`);
+            // Tentar mapear lojas conhecidas para seus domínios
+            const storeMapping: Record<string, string> = {
+              "Netshoes": "netshoes.com.br",
+              "Dafiti": "dafiti.com.br",
+              "Renner": "lojasrenner.com.br",
+              "C&A": "cea.com.br",
+              "Riachuelo": "riachuelo.com.br",
+              "Zara": "zara.com/br",
+              "Hering": "hering.com.br",
+              "Marisa": "marisa.com.br",
+              "Centauro": "centauro.com.br",
+              "Reserva": "usereserva.com",
+              "Nike": "nike.com.br",
+              "Adidas": "adidas.com.br",
+              "Amazon": "amazon.com.br",
+              "Shopee": "shopee.com.br",
+              "Mercado Livre": "mercadolivre.com.br",
+              "Magazine Luiza": "magazineluiza.com.br",
+              "Americanas": "americanas.com.br",
+              "Shein": "shein.com",
+              "Youcom": "youcom.com.br",
+            };
+            
+            // Procurar domínio da loja no mapping
+            let storeDomain = "";
+            for (const [name, domain] of Object.entries(storeMapping)) {
+              if (storeName.toLowerCase().includes(name.toLowerCase())) {
+                storeDomain = domain;
+                break;
+              }
+            }
+            
+            // Se temos o domínio, buscar dentro do site da loja
+            let finalLink: string;
+            if (storeDomain) {
+              finalLink = `https://www.google.com/search?q=site:${storeDomain}+${encodeURIComponent(productTitle)}&btnI=1`;
+            } else {
+              // Fallback: buscar produto + loja com "I'm Feeling Lucky" para ir direto
+              finalLink = `https://www.google.com/search?q=${encodeURIComponent(productTitle + " " + storeName + " comprar site oficial")}&btnI=1`;
+            }
+            
+            return {
+              storeName,
+              productTitle,
+              finalLink,
+            };
+          };
+          
+          const productPromises = serpData.shopping_results.slice(0, 10).map(async (item: any, index: number) => {
+            const details = await getProductDetails(item);
+            
+            console.log(`Product ${index} - source: ${details.storeName}, final link: ${details.finalLink}`);
             
             return {
               id: `product-${index}`,
-              name: storeName,
+              name: details.storeName,
               productImage: item.thumbnail || "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400",
-              productName: productTitle,
+              productName: details.productTitle,
               priceRange: item.price || "Consulte",
               distance: "Online",
-              address: storeName,
-              onlineLink: finalLink,
-              similarity: Math.max(70, 95 - (index * 3)),
+              address: details.storeName,
+              onlineLink: details.finalLink,
+              similarity: Math.max(75, 98 - (index * 2)),
             };
           });
+          
+          products = await Promise.all(productPromises);
         }
       } catch (e) {
         console.error("SerpAPI error:", e);
