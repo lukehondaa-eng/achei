@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import { Sparkles, Shirt } from "lucide-react";
+import { Sparkles } from "lucide-react";
+import logoImage from "@/assets/stylefinder-logo.png";
 
 export const Header = () => {
   return (
@@ -14,19 +15,13 @@ export const Header = () => {
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
-        className="flex items-center justify-center gap-3 mb-6"
+        className="flex items-center justify-center mb-6"
       >
-        <div className="relative">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg">
-            <Shirt className="w-7 h-7 text-primary-foreground" />
-          </div>
-          <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent flex items-center justify-center">
-            <Sparkles className="w-2.5 h-2.5 text-accent-foreground" />
-          </div>
-        </div>
-        <span className="font-display text-2xl md:text-3xl font-bold text-foreground">
-          Style<span className="text-primary">Finder</span>
-        </span>
+        <img 
+          src={logoImage} 
+          alt="StyleFinder Logo" 
+          className="w-32 h-32 md:w-40 md:h-40 object-contain"
+        />
       </motion.div>
 
       <motion.div
