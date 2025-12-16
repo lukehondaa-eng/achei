@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
-import logoImage from "@/assets/stylefinder-logo.png";
 
 export const Header = () => {
   return (
@@ -10,18 +9,16 @@ export const Header = () => {
       transition={{ duration: 0.5 }}
       className="text-center py-8 md:py-12"
     >
-      {/* Logo and Brand Name */}
+      {/* Brand Name */}
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
-        className="flex items-center justify-center mb-6"
+        className="flex items-center justify-center gap-2 mb-6"
       >
-        <img 
-          src={logoImage} 
-          alt="StyleFinder Logo" 
-          className="w-32 h-32 md:w-40 md:h-40 object-contain"
-        />
+        <span className="font-display text-3xl md:text-4xl font-bold text-foreground">
+          Style<span className="text-primary">Finder</span>
+        </span>
       </motion.div>
 
       <motion.div
