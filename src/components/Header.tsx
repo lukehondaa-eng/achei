@@ -15,15 +15,15 @@ export const Header = () => {
         transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
         className="flex items-center justify-center gap-2 mb-6"
       >
-        <span className="font-display text-5xl md:text-6xl font-bold text-primary">
+        <span className="font-display text-6xl md:text-7xl lg:text-8xl font-bold text-primary drop-shadow-lg">
           achei
         </span>
       </motion.div>
 
 
-      <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight">
+      <h1 className="font-display text-xl md:text-2xl lg:text-3xl font-medium text-foreground leading-tight">
         Encontre sua roupa
-        <span className="block text-primary">nas lojas perto de você</span>
+        <span className="block text-muted-foreground">nas lojas perto de você</span>
       </h1>
 
       <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto text-balance">
