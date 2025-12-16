@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
 
 export const Header = () => {
   return (
@@ -21,15 +20,6 @@ export const Header = () => {
         </span>
       </motion.div>
 
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-6"
-      >
-        <Sparkles className="w-4 h-4" />
-        <span className="text-sm font-medium">Busca visual com IA</span>
-      </motion.div>
 
       <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight">
         Encontre sua roupa
