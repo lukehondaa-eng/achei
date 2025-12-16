@@ -15,7 +15,7 @@ export const Header = () => {
         transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
         className="flex items-center justify-center gap-2 mb-6"
       >
-        <span className="font-display text-6xl md:text-7xl lg:text-8xl font-bold text-primary drop-shadow-lg animate-pulse">
+        <span className="font-display text-6xl md:text-7xl lg:text-8xl font-bold text-primary drop-shadow-lg">
           achei
         </span>
       </motion.div>
