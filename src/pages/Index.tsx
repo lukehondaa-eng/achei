@@ -1,13 +1,15 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Header } from "@/components/Header";
 import { ImageUploader } from "@/components/ImageUploader";
 import { SearchResults } from "@/components/SearchResults";
 import { AnalysisResult } from "@/components/AnalysisResult";
 import { ApiKeySetup } from "@/components/ApiKeySetup";
+import { WelcomeModal } from "@/components/WelcomeModal";
 import { MapPin, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ClothingAnalysis {
   type: string;
@@ -37,7 +39,15 @@ const Index = () => {
   const [analysis, setAnalysis] = useState<ClothingAnalysis | null>(null);
   const [needsApiKey, setNeedsApiKey] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
   const { toast } = useToast();
+  const { user, isGuest, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && !user && !isGuest) {
+      setShowWelcome(true);
+    }
+  }, [user, isGuest, loading]);
 
   const handleImageUpload = useCallback(async (file: File, preview: string) => {
     setUploadedImage(preview);
@@ -146,6 +156,8 @@ const Index = () => {
 
   return (
     <div className="min-h-screen gradient-hero">
+      <WelcomeModal open={showWelcome} onOpenChange={setShowWelcome} />
+      
       <div className="container max-w-6xl mx-auto px-4 pb-16">
         <Header />
 
