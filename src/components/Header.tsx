@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { UserMenu } from "./UserMenu";
 
 export const Header = () => {
   return (
@@ -6,8 +7,13 @@ export const Header = () => {
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="text-center py-8 md:py-12"
+      className="py-8 md:py-12"
     >
+      {/* Top bar with user menu */}
+      <div className="flex justify-end mb-4">
+        <UserMenu />
+      </div>
+
       {/* Brand Name */}
       <motion.div
         initial={{ scale: 0 }}
@@ -20,13 +26,12 @@ export const Header = () => {
         </span>
       </motion.div>
 
-
-      <h1 className="font-display text-2xl md:text-3xl lg:text-4xl font-semibold text-foreground leading-tight">
+      <h1 className="font-display text-2xl md:text-3xl lg:text-4xl font-semibold text-foreground leading-tight text-center">
         Encontre sua roupa
         <span className="block text-primary">nas lojas perto de você</span>
       </h1>
 
-      <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto text-balance">
+      <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto text-balance text-center">
         Tire uma foto ou envie uma imagem da roupa desejada e descubra onde 
         encontrar peças similares nas lojas da sua região
       </p>
