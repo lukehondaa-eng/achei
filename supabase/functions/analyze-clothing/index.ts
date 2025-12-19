@@ -19,9 +19,9 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    console.log("Analyzing image with AI...");
+    console.log("Starting fast analysis...");
 
-    // Step 1: Analyze image with fast model for quick response
+    // Ultra-optimized prompt for maximum precision and speed
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -29,25 +29,19 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite", // Faster model
+        model: "google/gemini-2.5-flash-lite", // Fastest model
         messages: [
           {
             role: "system",
-            content: `Analise a roupa na imagem e retorne APENAS JSON:
-{
-  "type": "tipo exato (camisa polo, camiseta, blazer, vestido, calça jeans, etc)",
-  "color": "cor exata em português (azul marinho, vermelho, preto, branco, etc)",
-  "style": "casual/formal/esportivo",
-  "material": "material se visível",
-  "details": "detalhes importantes",
-  "searchQuery": "query específica: [tipo] [cor] [material] [detalhe principal]"
-}
-Seja PRECISO na cor e tipo. Responda SÓ o JSON.`
+            content: `Você é um especialista em moda. Analise a roupa na imagem com EXTREMA PRECISÃO.
+RETORNE APENAS JSON válido sem markdown:
+{"type":"tipo EXATO da peça (ex: camisa polo, camiseta gola V, blazer slim, vestido midi, calça jeans skinny)","color":"cor EXATA em português (ex: azul marinho, verde musgo, rosa claro, vermelho vinho)","style":"casual/formal/esportivo/streetwear","brand":"marca se visível ou null","pattern":"liso/listrado/estampado/xadrez","searchQuery":"[tipo exato] [cor exata] [padrão] masculino/feminino"}
+SEJA ESPECÍFICO: não diga apenas "camisa", diga "camisa social manga longa". Não diga apenas "azul", diga "azul royal".`
           },
           {
             role: "user",
             content: [
-              { type: "text", text: "Analise esta roupa:" },
+              { type: "text", text: "Analise esta roupa com máxima precisão:" },
               { type: "image_url", image_url: { url: imageBase64 } }
             ]
           }
@@ -60,7 +54,7 @@ Seja PRECISO na cor e tipo. Responda SÓ o JSON.`
       console.error("AI Gateway error:", aiResponse.status, errorText);
       
       if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente." }), {
+        return new Response(JSON.stringify({ error: "Muitas requisições. Aguarde um momento." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -93,18 +87,18 @@ Seja PRECISO na cor e tipo. Responda SÓ o JSON.`
       };
     }
 
-    // Step 2: Search with strict query for exact matches
+    // Fast product search with strict matching
     let products = [];
     
     if (SERPAPI_KEY) {
-      console.log("Searching products...");
+      console.log("Searching products with strict filters...");
       
-      // Build strict search query with exact color and type
-      const strictQuery = `${clothingInfo.type} ${clothingInfo.color}`.trim();
+      // Build very specific search query
+      const strictQuery = `${clothingInfo.type} ${clothingInfo.color} ${clothingInfo.pattern || ''} comprar`.trim();
       const searchQuery = encodeURIComponent(strictQuery);
       
-      // Request more results to filter down to best matches
-      const serpUrl = `https://serpapi.com/search.json?engine=google_shopping&q=${searchQuery}&location=${encodeURIComponent(location || 'São Paulo, Brazil')}&hl=pt&gl=br&num=40&api_key=${SERPAPI_KEY}`;
+      // Parallel search for faster results - request more to filter strictly
+      const serpUrl = `https://serpapi.com/search.json?engine=google_shopping&q=${searchQuery}&location=${encodeURIComponent(location || 'São Paulo, Brazil')}&hl=pt&gl=br&num=50&api_key=${SERPAPI_KEY}`;
       
       try {
         const serpResponse = await fetch(serpUrl);
@@ -131,72 +125,106 @@ Seja PRECISO na cor e tipo. Responda SÓ o JSON.`
             "Americanas": "americanas.com.br",
             "Shein": "shein.com",
             "Youcom": "youcom.com.br",
+            "Lacoste": "lacoste.com.br",
+            "Tommy": "tommy.com.br",
+            "Ralph Lauren": "ralphlauren.com.br",
           };
 
-          // Filter products by similarity (must contain type AND color in title)
-          const typeKeywords = clothingInfo.type.toLowerCase().split(' ');
-          const colorKeyword = clothingInfo.color.toLowerCase();
+          // Strict matching keywords
+          const typeWords = clothingInfo.type.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
+          const colorWord = clothingInfo.color.toLowerCase();
+          const patternWord = (clothingInfo.pattern || '').toLowerCase();
           
-          // Color synonyms for better matching
+          // Extended color synonyms for precise matching
           const colorSynonyms: Record<string, string[]> = {
-            "preto": ["preto", "black", "negro"],
-            "branco": ["branco", "white", "off-white"],
-            "azul": ["azul", "blue", "navy"],
-            "azul marinho": ["azul marinho", "navy", "azul escuro"],
-            "vermelho": ["vermelho", "red", "vinho", "bordô"],
+            "preto": ["preto", "black", "negro", "noir"],
+            "branco": ["branco", "white", "off-white", "creme"],
+            "azul": ["azul", "blue"],
+            "azul marinho": ["azul marinho", "navy", "azul escuro", "marinho"],
+            "azul royal": ["azul royal", "royal blue", "azul intenso"],
+            "azul claro": ["azul claro", "azul bebê", "light blue"],
+            "vermelho": ["vermelho", "red"],
+            "vinho": ["vinho", "bordô", "burgundy", "marsala"],
             "verde": ["verde", "green"],
+            "verde musgo": ["verde musgo", "musgo", "verde escuro", "verde militar"],
+            "verde claro": ["verde claro", "verde água", "menta"],
             "amarelo": ["amarelo", "yellow", "mostarda"],
-            "rosa": ["rosa", "pink"],
-            "cinza": ["cinza", "grey", "gray", "mescla"],
-            "bege": ["bege", "creme", "nude", "areia"],
-            "marrom": ["marrom", "brown", "caramelo", "café"],
+            "rosa": ["rosa", "pink", "rosé"],
+            "rosa claro": ["rosa claro", "rosa bebê", "rosa pastel"],
+            "cinza": ["cinza", "grey", "gray", "mescla", "grafite"],
+            "bege": ["bege", "creme", "nude", "areia", "caramelo"],
+            "marrom": ["marrom", "brown", "café", "chocolate", "terra"],
+            "laranja": ["laranja", "orange", "coral"],
+            "roxo": ["roxo", "purple", "violeta", "lilás"],
           };
           
           const getColorVariants = (color: string): string[] => {
-            for (const [key, variants] of Object.entries(colorSynonyms)) {
-              if (color.includes(key) || variants.some(v => color.includes(v))) {
-                return variants;
+            const variants: string[] = [color];
+            for (const [key, synonyms] of Object.entries(colorSynonyms)) {
+              if (color.includes(key) || synonyms.some(s => color.includes(s))) {
+                variants.push(...synonyms);
               }
             }
-            return [color];
+            return [...new Set(variants)];
           };
           
-          const colorVariants = getColorVariants(colorKeyword);
+          const colorVariants = getColorVariants(colorWord);
           
+          // Score and filter with STRICT thresholds
           const scoredResults = serpData.shopping_results
-            .filter((item: any) => item.thumbnail) // Must have image
+            .filter((item: any) => item.thumbnail && item.title)
             .map((item: any) => {
               const title = (item.title || "").toLowerCase();
               
-              // Score based on type match
+              // Type score - must match primary type keywords
               let typeScore = 0;
-              for (const keyword of typeKeywords) {
-                if (keyword.length > 2 && title.includes(keyword)) {
-                  typeScore += 30;
+              let mainTypeMatch = false;
+              for (const word of typeWords) {
+                if (title.includes(word)) {
+                  typeScore += 25;
+                  if (word.length > 4) mainTypeMatch = true;
                 }
               }
               
-              // Score based on color match
+              // Exact type match bonus
+              if (title.includes(clothingInfo.type.toLowerCase())) {
+                typeScore += 30;
+                mainTypeMatch = true;
+              }
+              
+              // Color score - strict color matching
               let colorScore = 0;
               for (const colorVar of colorVariants) {
                 if (title.includes(colorVar)) {
-                  colorScore = 40;
+                  colorScore = 35;
                   break;
                 }
               }
               
-              // Bonus for exact type matches
-              if (title.includes(clothingInfo.type.toLowerCase())) {
-                typeScore += 20;
+              // Pattern match bonus
+              let patternScore = 0;
+              if (patternWord && patternWord !== 'liso') {
+                if (title.includes(patternWord)) {
+                  patternScore = 15;
+                }
               }
               
-              const totalScore = typeScore + colorScore;
+              // Brand match bonus (if detected)
+              let brandScore = 0;
+              if (clothingInfo.brand && title.toLowerCase().includes(clothingInfo.brand.toLowerCase())) {
+                brandScore = 20;
+              }
               
-              return { item, score: totalScore };
+              const totalScore = typeScore + colorScore + patternScore + brandScore;
+              
+              // STRICT: Must have main type match AND color match for high similarity
+              const isHighQuality = mainTypeMatch && colorScore > 0;
+              
+              return { item, score: totalScore, isHighQuality };
             })
-            .filter((result: any) => result.score >= 50) // Only high similarity
+            .filter((result: any) => result.isHighQuality && result.score >= 60) // Very strict filter
             .sort((a: any, b: any) => b.score - a.score)
-            .slice(0, 8); // Top 8 most similar
+            .slice(0, 6); // Only top 6 most identical
           
           products = scoredResults.map((result: any, index: number) => {
             const item = result.item;
@@ -212,14 +240,16 @@ Seja PRECISO na cor e tipo. Responda SÓ o JSON.`
             }
             
             let finalLink: string;
-            if (storeDomain) {
+            if (item.link && item.link.startsWith('http')) {
+              finalLink = item.link;
+            } else if (storeDomain) {
               finalLink = `https://www.google.com/search?q=site:${storeDomain}+${encodeURIComponent(productTitle)}&btnI=1`;
             } else {
               finalLink = `https://www.google.com/search?q=${encodeURIComponent(productTitle + " " + storeName + " comprar")}&btnI=1`;
             }
             
-            // Calculate similarity percentage based on score
-            const similarity = Math.min(98, 85 + Math.floor(result.score / 10));
+            // Calculate similarity based on strict scoring
+            const similarity = Math.min(99, 90 + Math.floor(result.score / 15));
             
             return {
               id: `product-${index}`,
@@ -243,13 +273,15 @@ Seja PRECISO na cor e tipo. Responda SÓ o JSON.`
       return new Response(JSON.stringify({ 
         analysis: clothingInfo,
         products: [],
-        message: "Nenhum produto muito similar encontrado. Tente outra imagem.",
+        message: "Nenhum produto idêntico encontrado. Tente uma foto mais clara.",
         needsApiKey: !SERPAPI_KEY
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    console.log(`Found ${products.length} highly similar products`);
+    
     return new Response(JSON.stringify({ 
       analysis: clothingInfo,
       products 

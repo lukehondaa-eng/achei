@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { User, LogOut, History, RefreshCw, LogIn } from 'lucide-react';
+import { User, LogOut, RefreshCw, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function UserMenu() {
@@ -25,10 +25,6 @@ export function UserMenu() {
 
   const handleSwitchAccount = () => {
     setShowWelcome(true);
-  };
-
-  const handleViewHistory = () => {
-    toast.info('Histórico de buscas em breve!');
   };
 
   const handleLogin = () => {
@@ -67,15 +63,11 @@ export function UserMenu() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={handleViewHistory} className="gap-2 cursor-pointer">
-              <History className="w-4 h-4" />
-              Histórico de buscas
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSwitchAccount} className="gap-2 cursor-pointer">
               <RefreshCw className="w-4 h-4" />
               Trocar de conta
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="gap-2 cursor-pointer text-destructive">
               <LogOut className="w-4 h-4" />
               Sair

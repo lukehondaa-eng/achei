@@ -49,6 +49,23 @@ const Index = () => {
     }
   }, [user, isGuest, loading]);
 
+  const saveToHistory = async (analysisData: ClothingAnalysis, productsCount: number) => {
+    if (!user) return;
+    
+    try {
+      await supabase.from('search_history').insert({
+        user_id: user.id,
+        clothing_type: analysisData.type,
+        clothing_color: analysisData.color,
+        clothing_style: analysisData.style,
+        search_query: analysisData.searchQuery,
+        results_count: productsCount,
+      });
+    } catch (err) {
+      console.error('Error saving history:', err);
+    }
+  };
+
   const handleImageUpload = useCallback(async (file: File, preview: string) => {
     setUploadedImage(preview);
     setIsLoading(true);
@@ -81,6 +98,8 @@ const Index = () => {
 
       if (data.analysis) {
         setAnalysis(data.analysis);
+        // Save to history if user is logged in
+        saveToHistory(data.analysis, data.products?.length || 0);
       }
 
       if (data.needsApiKey) {
@@ -109,7 +128,7 @@ const Index = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, user]);
 
   const handleRetry = useCallback(() => {
     if (uploadedImage) {
