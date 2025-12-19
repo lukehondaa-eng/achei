@@ -1,7 +1,12 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { UserMenu } from "./UserMenu";
+import { SearchHistory } from "./SearchHistory";
+import { WelcomeModal } from "./WelcomeModal";
 
 export const Header = () => {
+  const [showWelcome, setShowWelcome] = useState(false);
+
   return (
     <motion.header
       initial={{ opacity: 0, y: -20 }}
@@ -10,9 +15,11 @@ export const Header = () => {
       className="py-8 md:py-12"
     >
       {/* Top bar with user menu */}
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end gap-2 mb-4">
+        <SearchHistory onLoginClick={() => setShowWelcome(true)} />
         <UserMenu />
       </div>
+      <WelcomeModal open={showWelcome} onOpenChange={setShowWelcome} />
 
       {/* Brand Name */}
       <motion.div

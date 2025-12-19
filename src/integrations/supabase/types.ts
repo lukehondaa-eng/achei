@@ -41,6 +41,42 @@ export type Database = {
         }
         Relationships: []
       }
+      search_history: {
+        Row: {
+          clothing_color: string | null
+          clothing_style: string | null
+          clothing_type: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          results_count: number | null
+          search_query: string | null
+          user_id: string
+        }
+        Insert: {
+          clothing_color?: string | null
+          clothing_style?: string | null
+          clothing_type?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          results_count?: number | null
+          search_query?: string | null
+          user_id: string
+        }
+        Update: {
+          clothing_color?: string | null
+          clothing_style?: string | null
+          clothing_type?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          results_count?: number | null
+          search_query?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
