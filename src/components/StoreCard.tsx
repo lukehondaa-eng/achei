@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { MapPin, ExternalLink, Navigation } from "lucide-react";
+import { MapPin, ExternalLink, Navigation, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -15,18 +15,22 @@ interface StoreCardProps {
     address: string;
     onlineLink: string;
     similarity: number;
+    isExact?: boolean;
   };
   index: number;
+  isExact?: boolean;
 }
 
-export const StoreCard = ({ store, index }: StoreCardProps) => {
+export const StoreCard = ({ store, index, isExact }: StoreCardProps) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
       whileHover={{ y: -4 }}
-      className="group bg-card rounded-2xl overflow-hidden shadow-card hover:shadow-hover transition-all duration-300"
+      className={`group bg-card rounded-2xl overflow-hidden shadow-card hover:shadow-hover transition-all duration-300 ${
+        isExact ? 'ring-2 ring-green-500/50' : ''
+      }`}
     >
       <div className="relative">
         <img
@@ -34,9 +38,16 @@ export const StoreCard = ({ store, index }: StoreCardProps) => {
           alt={store.productName}
           className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-105"
         />
-        <Badge className="absolute top-3 right-3 bg-background/90 text-foreground hover:bg-background">
-          {store.similarity}% similar
-        </Badge>
+        {isExact ? (
+          <Badge className="absolute top-3 right-3 bg-green-500 text-white hover:bg-green-600 gap-1">
+            <CheckCircle2 className="w-3 h-3" />
+            Exato
+          </Badge>
+        ) : (
+          <Badge className="absolute top-3 right-3 bg-background/90 text-foreground hover:bg-background">
+            {store.similarity}% similar
+          </Badge>
+        )}
       </div>
 
       <div className="p-5 space-y-4">
@@ -72,20 +83,24 @@ export const StoreCard = ({ store, index }: StoreCardProps) => {
             <MapPin className="w-4 h-4 mr-2" />
             Ver no mapa
           </Button>
-        <a
-          href={store.onlineLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex-1"
-        >
-          <Button
-            size="sm"
-            className="w-full rounded-xl h-10 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-sm gap-1.5"
+          <a
+            href={store.onlineLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1"
           >
-            <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
-            <span className="truncate">Comprar</span>
-          </Button>
-        </a>
+            <Button
+              size="sm"
+              className={`w-full rounded-xl h-10 text-sm font-medium transition-all shadow-sm gap-1.5 ${
+                isExact 
+                  ? 'bg-green-500 text-white hover:bg-green-600' 
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
+              }`}
+            >
+              <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="truncate">Comprar</span>
+            </Button>
+          </a>
         </div>
       </div>
     </motion.div>

@@ -15,6 +15,8 @@ interface ClothingAnalysis {
   type: string;
   color: string;
   style: string;
+  brand?: string | null;
+  pattern?: string;
   material?: string;
   details?: string;
   searchQuery: string;
@@ -30,12 +32,15 @@ interface Product {
   address: string;
   onlineLink: string;
   similarity: number;
+  isExact?: boolean;
 }
 
 const Index = () => {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [results, setResults] = useState<Product[]>([]);
+  const [exactProducts, setExactProducts] = useState<Product[]>([]);
+  const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
+  const [resultMessage, setResultMessage] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<ClothingAnalysis | null>(null);
   const [needsApiKey, setNeedsApiKey] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +74,9 @@ const Index = () => {
   const handleImageUpload = useCallback(async (file: File, preview: string) => {
     setUploadedImage(preview);
     setIsLoading(true);
-    setResults([]);
+    setExactProducts([]);
+    setSimilarProducts([]);
+    setResultMessage(null);
     setAnalysis(null);
     setNeedsApiKey(false);
     setError(null);
@@ -98,8 +105,8 @@ const Index = () => {
 
       if (data.analysis) {
         setAnalysis(data.analysis);
-        // Save to history if user is logged in
-        saveToHistory(data.analysis, data.products?.length || 0);
+        const totalProducts = (data.exactProducts?.length || 0) + (data.similarProducts?.length || 0);
+        saveToHistory(data.analysis, totalProducts);
       }
 
       if (data.needsApiKey) {
@@ -110,12 +117,26 @@ const Index = () => {
         });
       }
 
-      if (data.products && data.products.length > 0) {
-        setResults(data.products);
+      if (data.message) {
+        setResultMessage(data.message);
+      }
+
+      if (data.exactProducts?.length > 0) {
+        setExactProducts(data.exactProducts);
         toast({
-          title: "Sucesso!",
-          description: `Encontramos ${data.products.length} produtos similares.`,
+          title: "Peça exata encontrada!",
+          description: `Encontramos ${data.exactProducts.length} resultado(s) da mesma marca.`,
         });
+      }
+
+      if (data.similarProducts?.length > 0) {
+        setSimilarProducts(data.similarProducts);
+        if (!data.exactProducts?.length) {
+          toast({
+            title: "Produtos similares",
+            description: `Encontramos ${data.similarProducts.length} opções semelhantes.`,
+          });
+        }
       }
     } catch (err) {
       console.error("Error:", err);
@@ -132,9 +153,10 @@ const Index = () => {
 
   const handleRetry = useCallback(() => {
     if (uploadedImage) {
-      // Re-trigger the search with the same image
       setIsLoading(true);
-      setResults([]);
+      setExactProducts([]);
+      setSimilarProducts([]);
+      setResultMessage(null);
       setError(null);
       
       supabase.functions.invoke('analyze-clothing', {
@@ -152,13 +174,9 @@ const Index = () => {
           });
         } else {
           if (data.analysis) setAnalysis(data.analysis);
-          if (data.products?.length > 0) {
-            setResults(data.products);
-            toast({
-              title: "Sucesso!",
-              description: `Encontramos ${data.products.length} produtos similares.`,
-            });
-          }
+          if (data.message) setResultMessage(data.message);
+          if (data.exactProducts?.length > 0) setExactProducts(data.exactProducts);
+          if (data.similarProducts?.length > 0) setSimilarProducts(data.similarProducts);
         }
       }).finally(() => setIsLoading(false));
     }
@@ -166,7 +184,9 @@ const Index = () => {
 
   const handleClear = useCallback(() => {
     setUploadedImage(null);
-    setResults([]);
+    setExactProducts([]);
+    setSimilarProducts([]);
+    setResultMessage(null);
     setAnalysis(null);
     setNeedsApiKey(false);
     setError(null);
@@ -224,7 +244,13 @@ const Index = () => {
           </div>
         )}
 
-        <SearchResults isLoading={isLoading} results={results} onRetry={handleRetry} />
+        <SearchResults 
+          isLoading={isLoading} 
+          exactProducts={exactProducts}
+          similarProducts={similarProducts}
+          message={resultMessage}
+          onRetry={handleRetry} 
+        />
       </div>
 
       <footer className="border-t border-border py-8 mt-auto">
