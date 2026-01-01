@@ -141,6 +141,10 @@ MANGA CURTA é DIFERENTE de MANGA LONGA!`
       const sleeves = (clothingInfo.sleeves || "").toLowerCase();
       const sleeveLength = (clothingInfo.sleeveLength || "").toLowerCase();
       const neckline = (clothingInfo.neckline || "").toLowerCase();
+      const typeLower = (clothingInfo.type || "").toLowerCase();
+
+      const hasCollar = clothingInfo.hasCollar === true || String(clothingInfo.hasCollar).toLowerCase() === "true";
+      const wantsPolo = typeLower.includes("polo") || hasCollar;
       
       // CRITICAL: Detect sleeve type
       const isShortSleeve = sleeves.includes("curta") || sleeveLength.includes("curta") || sleeves.includes("short");
@@ -172,22 +176,40 @@ MANGA CURTA é DIFERENTE de MANGA LONGA!`
       if (isShortSleeve) sleeveQuery = "manga curta";
       else if (isLongSleeve) sleeveQuery = "manga longa";
       else if (isSleeveless) sleeveQuery = "regata";
-      
+
+      const normalizeQuery = (q: string) => q.replace(/\s+/g, " ").trim();
+
+      const baseTypeRaw = String(clothingInfo.type || clothingInfo.garmentCategory || "roupa");
+      let baseType = baseTypeRaw;
+      const baseTypeLower = baseType.toLowerCase();
+
+      // Ensure sleeve/material hints exist in query (otherwise Google Shopping returns wrong categories)
+      if (sleeveQuery && !baseTypeLower.includes("manga") && !baseTypeLower.includes("regata") && !baseTypeLower.includes("sem manga")) {
+        baseType = `${baseType} ${sleeveQuery}`;
+      }
+      if (isKnitItem && !/(tricô|trico|tricot|knit|malha)/.test(baseType.toLowerCase())) {
+        baseType = `${baseType} tricô`;
+      }
+      if (wantsPolo && !baseType.toLowerCase().includes("polo")) {
+        baseType = `polo ${baseType}`;
+      }
+
+      const queryCore = normalizeQuery(`${baseType} ${color} ${clothingInfo.gender || ""}`);
+
       let exactQuery: string;
       let similarQuery: string;
-      
-      if (isKnitItem) {
-        exactQuery = hasBrand 
-          ? `${clothingInfo.brand} suéter tricô ${sleeveQuery} ${color} original`.trim()
-          : `suéter tricô malha ${sleeveQuery} ${color} ${clothingInfo.gender || ""} comprar`.trim();
-        similarQuery = `suéter tricô ${sleeveQuery} ${color} ${clothingInfo.gender || ""} comprar`.trim();
+
+      // IMPORTANT: only consider "exato" when brand+model are actually known; otherwise it's just similar
+      if (hasBrand && hasModel) {
+        exactQuery = normalizeQuery(`${clothingInfo.brand} ${clothingInfo.modelName} ${queryCore} original comprar`);
+      } else if (hasBrand) {
+        exactQuery = normalizeQuery(`${clothingInfo.brand} ${queryCore} comprar`);
       } else {
-        exactQuery = hasBrand 
-          ? `${clothingInfo.brand} ${clothingInfo.type} ${sleeveQuery} ${color} original`.trim()
-          : `${clothingInfo.type} ${sleeveQuery} ${color} ${clothingInfo.gender || ""} comprar`.trim();
-        similarQuery = `${clothingInfo.type} ${sleeveQuery} ${color} ${clothingInfo.gender || ""} comprar`.trim();
+        exactQuery = normalizeQuery(`${queryCore} comprar`);
       }
-      
+
+      similarQuery = normalizeQuery(`${queryCore} comprar`);
+
       console.log("Exact query:", exactQuery);
       console.log("Similar query:", similarQuery);
       
@@ -279,29 +301,39 @@ MANGA CURTA é DIFERENTE de MANGA LONGA!`
             const titleHasSleeveless = sleevelessTerms.some(t => title.includes(t));
             
             if (isShortSleeve) {
-              // We want SHORT sleeves - REJECT long sleeves explicitly
+              // We want SHORT sleeves - must be explicitly short sleeve
               if (titleHasLongSleeve) {
-                sleeveScore = -200; // HARD REJECT
+                sleeveScore = -200;
                 sleeveMatch = false;
-                console.log(`REJECTED (long sleeve when short needed): ${title.substring(0, 50)}`);
-              } else if (titleHasShortSleeve) {
-                sleeveScore = 40; // Bonus for matching
+                console.log(`REJECTED (long sleeve when short needed): ${title.substring(0, 70)}`);
+              } else if (!titleHasShortSleeve) {
+                // If title doesn't explicitly say short sleeve, reject (better no results than wrong results)
+                sleeveScore = -200;
+                sleeveMatch = false;
+              } else {
+                sleeveScore = 40;
               }
             } else if (isLongSleeve) {
-              // We want LONG sleeves - REJECT short sleeves explicitly
+              // We want LONG sleeves - must be explicitly long sleeve
               if (titleHasShortSleeve || titleHasSleeveless) {
-                sleeveScore = -200; // HARD REJECT
+                sleeveScore = -200;
                 sleeveMatch = false;
-                console.log(`REJECTED (short sleeve when long needed): ${title.substring(0, 50)}`);
-              } else if (titleHasLongSleeve) {
+                console.log(`REJECTED (short/sleeveless when long needed): ${title.substring(0, 70)}`);
+              } else if (!titleHasLongSleeve) {
+                sleeveScore = -200;
+                sleeveMatch = false;
+              } else {
                 sleeveScore = 40;
               }
             } else if (isSleeveless) {
-              // We want SLEEVELESS - REJECT anything with sleeves
+              // We want SLEEVELESS - must be explicitly sleeveless
               if (titleHasShortSleeve || titleHasLongSleeve) {
                 sleeveScore = -200;
                 sleeveMatch = false;
-              } else if (titleHasSleeveless) {
+              } else if (!titleHasSleeveless) {
+                sleeveScore = -200;
+                sleeveMatch = false;
+              } else {
                 sleeveScore = 40;
               }
             }
@@ -310,17 +342,38 @@ MANGA CURTA é DIFERENTE de MANGA LONGA!`
             let categoryScore = 0;
             let categoryMatch = false;
             
-            if (isKnitItem) {
+            if (wantsPolo) {
+              const titleHasPolo = poloTerms.some(t => title.includes(t)) || title.includes("polo");
+              const hasKnitTerm = isKnitItem ? knitTerms.some(t => title.includes(t)) : true;
+
+              if (!titleHasPolo) {
+                categoryScore = -200;
+                categoryMatch = false;
+                console.log(`REJECTED (not polo when polo needed): ${title.substring(0, 70)}`);
+              } else if (!hasKnitTerm) {
+                categoryScore = -200;
+                categoryMatch = false;
+                console.log(`REJECTED (non-knit polo when knit needed): ${title.substring(0, 70)}`);
+              } else {
+                categoryScore = 70;
+                categoryMatch = true;
+              }
+            } else if (isKnitItem) {
               const hasKnitTerm = knitTerms.some(t => title.includes(t));
               const hasTshirtTerm = tshirtTerms.some(t => title.includes(t));
-              
-              if (hasKnitTerm) {
+              const hasPoloTerm = poloTerms.some(t => title.includes(t)) || title.includes("polo");
+
+              if (hasPoloTerm) {
+                // When we are NOT looking for a polo, reject polos
+                categoryScore = -100;
+                categoryMatch = false;
+              } else if (hasKnitTerm) {
                 categoryScore = 50;
                 categoryMatch = true;
               } else if (hasTshirtTerm) {
                 categoryScore = -100;
                 categoryMatch = false;
-                console.log(`REJECTED (tshirt when knit needed): ${title.substring(0, 50)}`);
+                console.log(`REJECTED (tshirt when knit needed): ${title.substring(0, 70)}`);
               } else {
                 categoryScore = 0;
                 categoryMatch = false;
