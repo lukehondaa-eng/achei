@@ -11,7 +11,8 @@ serve(async (req) => {
   }
 
   try {
-    const { imageBase64, location, minPrice, maxPrice } = await req.json();
+    const { imageBase64, location, minPrice, maxPrice, strictMode } = await req.json();
+    const isUltraStrict = strictMode === "ultra"; // "ultra" = reject if title doesn't explicitly match; "normal" = allow if not contradicted
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SERPAPI_KEY = Deno.env.get("SERPAPI_KEY");
     
@@ -301,40 +302,47 @@ MANGA CURTA é DIFERENTE de MANGA LONGA!`
             const titleHasSleeveless = sleevelessTerms.some(t => title.includes(t));
             
             if (isShortSleeve) {
-              // We want SHORT sleeves - must be explicitly short sleeve
+              // We want SHORT sleeves
               if (titleHasLongSleeve) {
                 sleeveScore = -200;
                 sleeveMatch = false;
                 console.log(`REJECTED (long sleeve when short needed): ${title.substring(0, 70)}`);
-              } else if (!titleHasShortSleeve) {
-                // If title doesn't explicitly say short sleeve, reject (better no results than wrong results)
+              } else if (isUltraStrict && !titleHasShortSleeve) {
+                // Ultra-strict: must explicitly say short sleeve
                 sleeveScore = -200;
                 sleeveMatch = false;
-              } else {
+              } else if (titleHasShortSleeve) {
                 sleeveScore = 40;
+              } else {
+                // Normal mode: allow if not contradicted
+                sleeveScore = 0;
               }
             } else if (isLongSleeve) {
-              // We want LONG sleeves - must be explicitly long sleeve
+              // We want LONG sleeves
               if (titleHasShortSleeve || titleHasSleeveless) {
                 sleeveScore = -200;
                 sleeveMatch = false;
                 console.log(`REJECTED (short/sleeveless when long needed): ${title.substring(0, 70)}`);
-              } else if (!titleHasLongSleeve) {
+              } else if (isUltraStrict && !titleHasLongSleeve) {
                 sleeveScore = -200;
                 sleeveMatch = false;
-              } else {
+              } else if (titleHasLongSleeve) {
                 sleeveScore = 40;
+              } else {
+                sleeveScore = 0;
               }
             } else if (isSleeveless) {
-              // We want SLEEVELESS - must be explicitly sleeveless
+              // We want SLEEVELESS
               if (titleHasShortSleeve || titleHasLongSleeve) {
                 sleeveScore = -200;
                 sleeveMatch = false;
-              } else if (!titleHasSleeveless) {
+              } else if (isUltraStrict && !titleHasSleeveless) {
                 sleeveScore = -200;
                 sleeveMatch = false;
-              } else {
+              } else if (titleHasSleeveless) {
                 sleeveScore = 40;
+              } else {
+                sleeveScore = 0;
               }
             }
             
@@ -346,17 +354,29 @@ MANGA CURTA é DIFERENTE de MANGA LONGA!`
               const titleHasPolo = poloTerms.some(t => title.includes(t)) || title.includes("polo");
               const hasKnitTerm = isKnitItem ? knitTerms.some(t => title.includes(t)) : true;
 
-              if (!titleHasPolo) {
-                categoryScore = -200;
-                categoryMatch = false;
-                console.log(`REJECTED (not polo when polo needed): ${title.substring(0, 70)}`);
-              } else if (!hasKnitTerm) {
-                categoryScore = -200;
-                categoryMatch = false;
-                console.log(`REJECTED (non-knit polo when knit needed): ${title.substring(0, 70)}`);
+              if (isUltraStrict) {
+                // Ultra-strict: must match polo AND (knit if needed)
+                if (!titleHasPolo) {
+                  categoryScore = -200;
+                  categoryMatch = false;
+                  console.log(`REJECTED (not polo when polo needed): ${title.substring(0, 70)}`);
+                } else if (isKnitItem && !hasKnitTerm) {
+                  categoryScore = -200;
+                  categoryMatch = false;
+                  console.log(`REJECTED (non-knit polo when knit needed): ${title.substring(0, 70)}`);
+                } else {
+                  categoryScore = 70;
+                  categoryMatch = true;
+                }
               } else {
-                categoryScore = 70;
-                categoryMatch = true;
+                // Normal mode: polo is required, knit is optional
+                if (!titleHasPolo) {
+                  categoryScore = -100;
+                  categoryMatch = false;
+                } else {
+                  categoryScore = hasKnitTerm ? 70 : 40;
+                  categoryMatch = true;
+                }
               }
             } else if (isKnitItem) {
               const hasKnitTerm = knitTerms.some(t => title.includes(t));
@@ -374,9 +394,14 @@ MANGA CURTA é DIFERENTE de MANGA LONGA!`
                 categoryScore = -100;
                 categoryMatch = false;
                 console.log(`REJECTED (tshirt when knit needed): ${title.substring(0, 70)}`);
-              } else {
-                categoryScore = 0;
+              } else if (isUltraStrict) {
+                // Ultra-strict: must have knit term
+                categoryScore = -100;
                 categoryMatch = false;
+              } else {
+                // Normal mode: allow if not a t-shirt
+                categoryScore = 0;
+                categoryMatch = true;
               }
             } else {
               const typeWords = clothingInfo.type.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
@@ -385,6 +410,11 @@ MANGA CURTA é DIFERENTE de MANGA LONGA!`
                   categoryScore += 20;
                   categoryMatch = true;
                 }
+              }
+              // In normal mode, be more permissive if no type words matched
+              if (!categoryMatch && !isUltraStrict) {
+                categoryMatch = true;
+                categoryScore = 10;
               }
             }
             
