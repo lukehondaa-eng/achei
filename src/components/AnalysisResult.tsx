@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Sparkles, Shirt, Palette, Tag, Award } from "lucide-react";
+import { Sparkles, Shirt, Palette, Tag, Award, Layers } from "lucide-react";
 
 interface AnalysisResultProps {
   analysis: {
@@ -7,14 +7,17 @@ interface AnalysisResultProps {
     color: string;
     style: string;
     brand?: string | null;
+    modelName?: string | null;
     material?: string;
     pattern?: string;
+    fit?: string;
     details?: string;
   };
 }
 
 export const AnalysisResult = ({ analysis }: AnalysisResultProps) => {
   const hasBrand = analysis.brand && analysis.brand !== "null" && analysis.brand !== null;
+  const hasModel = analysis.modelName && analysis.modelName !== "null" && analysis.modelName !== null;
   
   return (
     <motion.div
@@ -31,7 +34,7 @@ export const AnalysisResult = ({ analysis }: AnalysisResultProps) => {
         </h3>
       </div>
 
-      {hasBrand && (
+      {(hasBrand || hasModel) && (
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -42,8 +45,12 @@ export const AnalysisResult = ({ analysis }: AnalysisResultProps) => {
               <Award className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs text-primary font-medium uppercase tracking-wide">Marca Identificada</p>
-              <p className="text-lg font-display font-bold text-foreground">{analysis.brand}</p>
+              <p className="text-xs text-primary font-medium uppercase tracking-wide">
+                {hasModel ? "Marca & Modelo Identificados" : "Marca Identificada"}
+              </p>
+              <p className="text-lg font-display font-bold text-foreground">
+                {hasBrand ? analysis.brand : ""}{hasBrand && hasModel ? " - " : ""}{hasModel ? analysis.modelName : ""}
+              </p>
             </div>
           </div>
         </motion.div>
@@ -73,6 +80,16 @@ export const AnalysisResult = ({ analysis }: AnalysisResultProps) => {
             <p className="text-sm font-medium text-foreground capitalize">{analysis.style}</p>
           </div>
         </div>
+
+        {analysis.fit && (
+          <div className="flex items-center gap-3">
+            <Layers className="w-5 h-5 text-muted-foreground" />
+            <div>
+              <p className="text-xs text-muted-foreground">Caimento</p>
+              <p className="text-sm font-medium text-foreground capitalize">{analysis.fit}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {analysis.pattern && analysis.pattern !== 'liso' && (

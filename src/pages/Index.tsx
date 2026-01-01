@@ -16,9 +16,14 @@ interface ClothingAnalysis {
   color: string;
   style: string;
   brand?: string | null;
+  modelName?: string | null;
   pattern?: string;
   material?: string;
+  fit?: string;
+  neckline?: string;
+  sleeves?: string;
   details?: string;
+  gender?: string;
   searchQuery: string;
 }
 
