@@ -32,12 +32,12 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `Você é um especialista em moda e identificação de roupas. Analise a imagem com MÁXIMA PRECISÃO.
+            content: `Você é um especialista em moda e identificação de roupas. Analise a imagem com MÁXIMA PRECISÃO ABSOLUTA.
 
 RETORNE APENAS JSON válido sem markdown:
 {
   "garmentCategory": "CATEGORIA PRINCIPAL (suéter/tricô/malha, camisa/blusa, camiseta, polo, jaqueta, blazer, vestido, calça, shorts, saia)",
-  "type": "DESCRIÇÃO ULTRA ESPECÍFICA (ex: suéter de tricô gola V, polo de malha piquet, camiseta básica gola redonda)",
+  "type": "DESCRIÇÃO ULTRA ESPECÍFICA (ex: suéter de tricô gola V manga curta, polo de malha piquet, camiseta básica gola redonda)",
   "material": "MATERIAL EXATO (tricô/malha/knit, algodão, poliéster, linho, jeans, couro, seda, lã)",
   "texture": "TEXTURA (tricotado/knit, liso/smooth, canelado/ribbed, waffle, piquet)",
   "color": "cor EXATA (bege areia, bege creme, azul marinho, verde musgo)",
@@ -47,16 +47,26 @@ RETORNE APENAS JSON válido sem markdown:
   "pattern": "liso/listrado/estampado/xadrez/floral",
   "fit": "regular/slim/oversized/relaxed",
   "neckline": "gola V/gola redonda/gola polo/gola alta/careca",
-  "sleeves": "manga curta/manga longa/sem manga",
+  "sleeves": "manga curta/manga longa/sem manga/regata/meia manga",
+  "sleeveLength": "curta/longa/sem/regata/meia",
   "gender": "masculino/feminino/unissex",
+  "hasButtons": true/false,
+  "hasZipper": true/false,
+  "hasPocket": true/false,
+  "hasCollar": true/false,
   "keyFeatures": ["lista", "de", "características", "distintivas"],
-  "searchQuery": "[categoria] [material/textura] [cor] [gênero] comprar"
+  "searchQuery": "[categoria] [material/textura] [cor] [manga] [gênero] comprar"
 }
 
-CRÍTICO: 
-- Diferencie CLARAMENTE entre: tricô/malha/knit vs camiseta de algodão vs polo piquet
-- Uma peça de MALHA/TRICÔ NÃO é uma camiseta comum
-- Identifique a TEXTURA do tecido (tricotado vs liso)`
+CRÍTICO - IDENTIFIQUE COM PRECISÃO ABSOLUTA:
+1. MANGA: Se é MANGA CURTA, MANGA LONGA, SEM MANGA ou REGATA - isso é FUNDAMENTAL
+2. MATERIAL: tricô/malha/knit vs algodão liso vs piquet - São COMPLETAMENTE diferentes
+3. GOLA: V, redonda, polo, alta, careca
+4. DETALHES: botões, zíper, bolsos, recortes
+5. TEXTURA: tricotado/texturizado vs liso
+
+Uma peça de MALHA/TRICÔ NÃO é uma camiseta comum!
+MANGA CURTA é DIFERENTE de MANGA LONGA!`
           },
           {
             role: "user",
@@ -109,6 +119,9 @@ CRÍTICO:
         material: null,
         texture: null,
         pattern: "liso",
+        sleeves: null,
+        sleeveLength: null,
+        neckline: null,
         searchQuery: "roupa moda"
       };
     }
@@ -117,7 +130,7 @@ CRÍTICO:
     let similarProducts: any[] = [];
     
     if (SERPAPI_KEY) {
-      console.log("Searching with ultra-precise filters...");
+      console.log("Searching with ULTRA-STRICT precision filters...");
       
       const hasBrand = clothingInfo.brand && clothingInfo.brand !== "null" && clothingInfo.brand !== null;
       const hasModel = clothingInfo.modelName && clothingInfo.modelName !== "null" && clothingInfo.modelName !== null;
@@ -125,31 +138,56 @@ CRÍTICO:
       const material = (clothingInfo.material || "").toLowerCase();
       const texture = (clothingInfo.texture || "").toLowerCase();
       const color = (clothingInfo.color || "").toLowerCase();
+      const sleeves = (clothingInfo.sleeves || "").toLowerCase();
+      const sleeveLength = (clothingInfo.sleeveLength || "").toLowerCase();
+      const neckline = (clothingInfo.neckline || "").toLowerCase();
+      
+      // CRITICAL: Detect sleeve type
+      const isShortSleeve = sleeves.includes("curta") || sleeveLength.includes("curta") || sleeves.includes("short");
+      const isLongSleeve = sleeves.includes("longa") || sleeveLength.includes("longa") || sleeves.includes("long");
+      const isSleeveless = sleeves.includes("sem manga") || sleeves.includes("regata") || sleeveLength.includes("sem") || sleeveLength.includes("regata");
       
       // Detect if this is a knit/malha item
       const isKnitItem = material.includes("tricô") || material.includes("malha") || material.includes("knit") || 
                          texture.includes("tricotado") || texture.includes("knit") ||
                          category.includes("tricô") || category.includes("malha") || category.includes("suéter");
       
-      // Build search queries based on material type
+      // Sleeve terms for filtering
+      const shortSleeveTerms = ["manga curta", "short sleeve", "m/c", "mc"];
+      const longSleeveTerms = ["manga longa", "long sleeve", "m/l", "ml", "manga comprida"];
+      const sleevelessTerms = ["regata", "sem manga", "cavada", "sleeveless", "tank"];
+      
+      console.log("=== DETECTED ATTRIBUTES ===");
+      console.log("Category:", category);
+      console.log("Material:", material);
+      console.log("Sleeves:", sleeves, "| Length:", sleeveLength);
+      console.log("Is short sleeve:", isShortSleeve);
+      console.log("Is long sleeve:", isLongSleeve);
+      console.log("Is knit item:", isKnitItem);
+      console.log("Neckline:", neckline);
+      console.log("===========================");
+      
+      // Build PRECISE search query with sleeve info
+      let sleeveQuery = "";
+      if (isShortSleeve) sleeveQuery = "manga curta";
+      else if (isLongSleeve) sleeveQuery = "manga longa";
+      else if (isSleeveless) sleeveQuery = "regata";
+      
       let exactQuery: string;
       let similarQuery: string;
       
       if (isKnitItem) {
         exactQuery = hasBrand 
-          ? `${clothingInfo.brand} suéter tricô ${color} original`
-          : `suéter tricô malha ${color} ${clothingInfo.gender || ""} comprar`.trim();
-        similarQuery = `suéter tricô ${color} masculino comprar`;
+          ? `${clothingInfo.brand} suéter tricô ${sleeveQuery} ${color} original`.trim()
+          : `suéter tricô malha ${sleeveQuery} ${color} ${clothingInfo.gender || ""} comprar`.trim();
+        similarQuery = `suéter tricô ${sleeveQuery} ${color} ${clothingInfo.gender || ""} comprar`.trim();
       } else {
         exactQuery = hasBrand 
-          ? `${clothingInfo.brand} ${clothingInfo.type} ${color} original`
-          : `${clothingInfo.type} ${color} ${clothingInfo.gender || ""} comprar`.trim();
-        similarQuery = `${clothingInfo.type} ${color} ${clothingInfo.gender || ""} comprar`.trim();
+          ? `${clothingInfo.brand} ${clothingInfo.type} ${sleeveQuery} ${color} original`.trim()
+          : `${clothingInfo.type} ${sleeveQuery} ${color} ${clothingInfo.gender || ""} comprar`.trim();
+        similarQuery = `${clothingInfo.type} ${sleeveQuery} ${color} ${clothingInfo.gender || ""} comprar`.trim();
       }
       
-      console.log("Category:", category);
-      console.log("Material:", material);
-      console.log("Is knit item:", isKnitItem);
       console.log("Exact query:", exactQuery);
       console.log("Similar query:", similarQuery);
       
@@ -232,12 +270,47 @@ CRÍTICO:
             const title = (item.title || "").toLowerCase();
             const source = (item.source || "").toLowerCase();
             
-            // STRICT Category matching
+            // ========= STRICT SLEEVE MATCHING =========
+            let sleeveScore = 0;
+            let sleeveMatch = true; // Start true, set to false if wrong sleeve detected
+            
+            const titleHasShortSleeve = shortSleeveTerms.some(t => title.includes(t));
+            const titleHasLongSleeve = longSleeveTerms.some(t => title.includes(t));
+            const titleHasSleeveless = sleevelessTerms.some(t => title.includes(t));
+            
+            if (isShortSleeve) {
+              // We want SHORT sleeves - REJECT long sleeves explicitly
+              if (titleHasLongSleeve) {
+                sleeveScore = -200; // HARD REJECT
+                sleeveMatch = false;
+                console.log(`REJECTED (long sleeve when short needed): ${title.substring(0, 50)}`);
+              } else if (titleHasShortSleeve) {
+                sleeveScore = 40; // Bonus for matching
+              }
+            } else if (isLongSleeve) {
+              // We want LONG sleeves - REJECT short sleeves explicitly
+              if (titleHasShortSleeve || titleHasSleeveless) {
+                sleeveScore = -200; // HARD REJECT
+                sleeveMatch = false;
+                console.log(`REJECTED (short sleeve when long needed): ${title.substring(0, 50)}`);
+              } else if (titleHasLongSleeve) {
+                sleeveScore = 40;
+              }
+            } else if (isSleeveless) {
+              // We want SLEEVELESS - REJECT anything with sleeves
+              if (titleHasShortSleeve || titleHasLongSleeve) {
+                sleeveScore = -200;
+                sleeveMatch = false;
+              } else if (titleHasSleeveless) {
+                sleeveScore = 40;
+              }
+            }
+            
+            // ========= STRICT CATEGORY MATCHING =========
             let categoryScore = 0;
             let categoryMatch = false;
             
             if (isKnitItem) {
-              // For knit items - MUST have knit terms
               const hasKnitTerm = knitTerms.some(t => title.includes(t));
               const hasTshirtTerm = tshirtTerms.some(t => title.includes(t));
               
@@ -245,15 +318,14 @@ CRÍTICO:
                 categoryScore = 50;
                 categoryMatch = true;
               } else if (hasTshirtTerm) {
-                // This is a plain t-shirt, NOT a knit item - reject
                 categoryScore = -100;
                 categoryMatch = false;
+                console.log(`REJECTED (tshirt when knit needed): ${title.substring(0, 50)}`);
               } else {
                 categoryScore = 0;
                 categoryMatch = false;
               }
             } else {
-              // For non-knit items - match by type
               const typeWords = clothingInfo.type.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
               for (const word of typeWords) {
                 if (title.includes(word)) {
@@ -263,7 +335,7 @@ CRÍTICO:
               }
             }
             
-            // Color matching
+            // ========= COLOR MATCHING =========
             let colorScore = 0;
             let colorMatch = false;
             for (const colorVar of colorVariants) {
@@ -274,7 +346,7 @@ CRÍTICO:
               }
             }
             
-            // Brand matching
+            // ========= BRAND MATCHING =========
             let brandScore = 0;
             let isBrandMatch = false;
             if (hasBrand && (title.includes(brandLower) || source.includes(brandLower))) {
@@ -282,12 +354,15 @@ CRÍTICO:
               isBrandMatch = true;
             }
             
-            const totalScore = categoryScore + colorScore + brandScore;
+            const totalScore = categoryScore + colorScore + brandScore + sleeveScore;
             
-            const isExact = hasBrand ? isBrandMatch && categoryMatch && colorMatch && totalScore >= 90 : false;
-            const isSimilar = categoryMatch && colorMatch && categoryScore >= 30 && totalScore >= 60;
+            // STRICT FILTERING: Must pass sleeve check
+            const passesSleeveCheck = sleeveMatch && sleeveScore >= 0;
             
-            return { item, score: totalScore, isExact, isSimilar, categoryMatch, colorMatch };
+            const isExact = hasBrand ? isBrandMatch && categoryMatch && colorMatch && passesSleeveCheck && totalScore >= 90 : false;
+            const isSimilar = categoryMatch && colorMatch && passesSleeveCheck && categoryScore >= 30 && totalScore >= 60;
+            
+            return { item, score: totalScore, isExact, isSimilar, categoryMatch, colorMatch, sleeveMatch, passesSleeveCheck };
           });
       };
       
