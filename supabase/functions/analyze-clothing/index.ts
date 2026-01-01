@@ -521,10 +521,40 @@ MANGA CURTA é DIFERENTE de MANGA LONGA!`
           .sort((a: any, b: any) => b.score - a.score)
           .slice(0, 4);
         
-        const similarFiltered = processed
+        let similarFiltered = processed
           .filter((r: any) => r.isSimilar && !r.isExact && r.score >= 60)
           .sort((a: any, b: any) => b.score - a.score)
           .slice(0, 8);
+        
+        // FALLBACK: If no similar products found with strict filters, show color-only matches
+        if (similarFiltered.length === 0) {
+          console.log("No strict matches found, falling back to color-only matches...");
+          
+          const colorOnlyMatches = processed
+            .filter((r: any) => r.colorMatch && r.score > -50) // Has color match and not heavily penalized
+            .sort((a: any, b: any) => b.score - a.score)
+            .slice(0, 12);
+          
+          if (colorOnlyMatches.length > 0) {
+            console.log(`Found ${colorOnlyMatches.length} color-only fallback matches`);
+            similarFiltered = colorOnlyMatches;
+          }
+        }
+        
+        // SECOND FALLBACK: If still nothing, just show any result with positive score
+        if (similarFiltered.length === 0 && exactFiltered.length === 0) {
+          console.log("No color matches, showing any available results...");
+          
+          const anyResults = processed
+            .filter((r: any) => r.score > -100)
+            .sort((a: any, b: any) => b.score - a.score)
+            .slice(0, 8);
+          
+          if (anyResults.length > 0) {
+            console.log(`Showing ${anyResults.length} general results as last fallback`);
+            similarFiltered = anyResults;
+          }
+        }
         
         exactProducts = exactFiltered.map((r: any, i: number) => createProduct(r.item, i, r.score, true));
         similarProducts = similarFiltered.map((r: any, i: number) => createProduct(r.item, i, r.score, false));
@@ -541,11 +571,12 @@ MANGA CURTA é DIFERENTE de MANGA LONGA!`
 
     let message = null;
     if (!hasExact && !hasSimilar) {
-      message = "Não encontramos produtos correspondentes ao tipo e cor exatos. Tente uma foto mais clara.";
+      message = "Não encontramos produtos correspondentes. Tente uma foto mais clara ou mude para modo 'Estrito'.";
     } else if (!hasExact && hasSimilar) {
       const brandText = clothingInfo.brand ? ` da marca ${clothingInfo.brand}` : "";
       const materialText = clothingInfo.material ? ` (${clothingInfo.material})` : "";
-      message = `Não encontramos a peça exata${brandText}${materialText}, mas encontramos opções do mesmo tipo e cor!`;
+      const colorText = clothingInfo.color ? ` na cor ${clothingInfo.color}` : "";
+      message = `Não encontramos a peça exata${brandText}${materialText}, mas encontramos opções${colorText}!`;
     }
 
     return new Response(JSON.stringify({ 
