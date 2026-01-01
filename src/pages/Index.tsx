@@ -6,7 +6,9 @@ import { SearchResults } from "@/components/SearchResults";
 import { AnalysisResult } from "@/components/AnalysisResult";
 import { ApiKeySetup } from "@/components/ApiKeySetup";
 import { WelcomeModal } from "@/components/WelcomeModal";
-import { MapPin, AlertCircle } from "lucide-react";
+import { MapPin, AlertCircle, Shield, ShieldCheck } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -50,6 +52,7 @@ const Index = () => {
   const [needsApiKey, setNeedsApiKey] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [strictMode, setStrictMode] = useState<"ultra" | "normal">("ultra");
   const { toast } = useToast();
   const { user, isGuest, loading } = useAuth();
 
@@ -90,7 +93,8 @@ const Index = () => {
       const { data, error } = await supabase.functions.invoke('analyze-clothing', {
         body: { 
           imageBase64: preview,
-          location: "São Paulo, Brazil"
+          location: "São Paulo, Brazil",
+          strictMode
         }
       });
 
@@ -154,7 +158,7 @@ const Index = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [toast, user]);
+  }, [toast, user, strictMode]);
 
   const handleRetry = useCallback(() => {
     if (uploadedImage) {
@@ -167,7 +171,8 @@ const Index = () => {
       supabase.functions.invoke('analyze-clothing', {
         body: { 
           imageBase64: uploadedImage,
-          location: "São Paulo, Brazil"
+          location: "São Paulo, Brazil",
+          strictMode
         }
       }).then(({ data, error }) => {
         if (error || data.error) {
@@ -185,7 +190,7 @@ const Index = () => {
         }
       }).finally(() => setIsLoading(false));
     }
-  }, [uploadedImage, toast]);
+  }, [uploadedImage, toast, strictMode]);
 
   const handleClear = useCallback(() => {
     setUploadedImage(null);
@@ -216,6 +221,31 @@ const Index = () => {
           <button className="text-primary hover:underline underline-offset-2">
             Alterar
           </button>
+        </motion.div>
+
+        {/* Strict Mode Toggle */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.35 }}
+          className="flex items-center justify-center gap-3 mb-6"
+        >
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-card/60 backdrop-blur-sm border border-border/50">
+            <Shield className={`w-4 h-4 ${strictMode === "normal" ? "text-primary" : "text-muted-foreground"}`} />
+            <Label htmlFor="strict-mode" className="text-sm text-muted-foreground cursor-pointer">
+              Estrito
+            </Label>
+            <Switch
+              id="strict-mode"
+              checked={strictMode === "ultra"}
+              onCheckedChange={(checked) => setStrictMode(checked ? "ultra" : "normal")}
+              className="data-[state=checked]:bg-primary"
+            />
+            <Label htmlFor="strict-mode" className="text-sm text-muted-foreground cursor-pointer">
+              Ultra Estrito
+            </Label>
+            <ShieldCheck className={`w-4 h-4 ${strictMode === "ultra" ? "text-primary" : "text-muted-foreground"}`} />
+          </div>
         </motion.div>
 
         <div className="max-w-xl mx-auto mb-8">
