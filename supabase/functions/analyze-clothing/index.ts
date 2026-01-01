@@ -283,6 +283,12 @@ MANGA CURTA é DIFERENTE de MANGA LONGA!`
           .filter((item: any) => {
             if (!item.thumbnail || !item.title) return false;
             
+            // CRITICAL: Must have a valid purchase link
+            if (!item.link || !item.link.startsWith('http')) {
+              console.log(`REJECTED (no valid link): ${(item.title || "").substring(0, 50)}`);
+              return false;
+            }
+            
             const itemPrice = parsePrice(item.price || "");
             if (minPrice !== undefined && minPrice !== null && itemPrice !== null && itemPrice < minPrice) return false;
             if (maxPrice !== undefined && maxPrice !== null && itemPrice !== null && itemPrice > maxPrice) return false;
