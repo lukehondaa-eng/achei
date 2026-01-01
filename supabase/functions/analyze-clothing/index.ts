@@ -19,9 +19,8 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    console.log("Starting precise model identification...");
+    console.log("Starting ultra-precise model identification...");
 
-    // Ultra-precise prompt for exact model identification
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -33,34 +32,36 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `Você é um especialista em identificação de roupas e moda. Analise a imagem com MÁXIMA PRECISÃO para identificar o MODELO EXATO da peça.
+            content: `Você é um especialista em moda e identificação de roupas. Analise a imagem com MÁXIMA PRECISÃO.
 
 RETORNE APENAS JSON válido sem markdown:
 {
-  "type": "tipo MUITO ESPECÍFICO (ex: camisa polo manga curta gola ribana, camiseta oversized gola careca, blazer slim fit 2 botões, vestido midi evasê, calça jeans skinny cintura alta)",
-  "color": "cor EXATA detalhada (ex: azul marinho escuro, verde musgo militar, rosa blush claro, vermelho ferrari, branco off-white)",
-  "style": "casual/formal/esportivo/streetwear/elegante/básico",
-  "brand": "MARCA se visível por logo/etiqueta/design característico (Nike, Adidas, Lacoste, Zara, etc) ou null",
-  "modelName": "NOME DO MODELO ESPECÍFICO se identificável (ex: Nike Air Force 1, Lacoste L.12.12, Polo Ralph Lauren Custom Fit) ou null",
-  "pattern": "liso/listrado/estampado/xadrez/floral/geométrico/abstrato",
-  "material": "algodão/poliéster/jeans/seda/linho/malha/viscose/couro",
-  "fit": "regular/slim/oversized/skinny/relaxed",
-  "neckline": "gola V/gola redonda/gola polo/gola alta/decote/sem gola",
-  "sleeves": "manga curta/manga longa/sem manga/manga 3/4",
-  "details": "detalhes distintivos (botões, bolsos, estampas específicas, acabamentos)",
+  "garmentCategory": "CATEGORIA PRINCIPAL (suéter/tricô/malha, camisa/blusa, camiseta, polo, jaqueta, blazer, vestido, calça, shorts, saia)",
+  "type": "DESCRIÇÃO ULTRA ESPECÍFICA (ex: suéter de tricô gola V, polo de malha piquet, camiseta básica gola redonda)",
+  "material": "MATERIAL EXATO (tricô/malha/knit, algodão, poliéster, linho, jeans, couro, seda, lã)",
+  "texture": "TEXTURA (tricotado/knit, liso/smooth, canelado/ribbed, waffle, piquet)",
+  "color": "cor EXATA (bege areia, bege creme, azul marinho, verde musgo)",
+  "style": "casual/formal/esportivo/streetwear/elegante",
+  "brand": "MARCA se visível ou null",
+  "modelName": "MODELO ESPECÍFICO se identificável ou null",
+  "pattern": "liso/listrado/estampado/xadrez/floral",
+  "fit": "regular/slim/oversized/relaxed",
+  "neckline": "gola V/gola redonda/gola polo/gola alta/careca",
+  "sleeves": "manga curta/manga longa/sem manga",
   "gender": "masculino/feminino/unissex",
-  "searchQuery": "[marca] [modelName se houver] [tipo exato] [cor] [fit] [gênero] comprar original"
+  "keyFeatures": ["lista", "de", "características", "distintivas"],
+  "searchQuery": "[categoria] [material/textura] [cor] [gênero] comprar"
 }
 
-IMPORTANTE: 
-- Seja EXTREMAMENTE específico no tipo e detalhes
-- Identifique CARACTERÍSTICAS ÚNICAS que diferenciam este modelo
-- Se não conseguir identificar a marca/modelo exato, foque nas características visuais distintivas`
+CRÍTICO: 
+- Diferencie CLARAMENTE entre: tricô/malha/knit vs camiseta de algodão vs polo piquet
+- Uma peça de MALHA/TRICÔ NÃO é uma camiseta comum
+- Identifique a TEXTURA do tecido (tricotado vs liso)`
           },
           {
             role: "user",
             content: [
-              { type: "text", text: "Identifique o MODELO EXATO desta roupa com todos os detalhes distintivos:" },
+              { type: "text", text: "Identifique esta roupa com MÁXIMA precisão, especialmente o tipo de tecido e categoria:" },
               { type: "image_url", image_url: { url: imageBase64 } }
             ]
           }
@@ -99,11 +100,14 @@ IMPORTANTE:
     } catch (e) {
       console.error("Failed to parse AI response:", e);
       clothingInfo = {
+        garmentCategory: "roupa",
         type: "roupa",
         color: "variada",
         style: "casual",
         brand: null,
         modelName: null,
+        material: null,
+        texture: null,
         pattern: "liso",
         searchQuery: "roupa moda"
       };
@@ -113,32 +117,41 @@ IMPORTANTE:
     let similarProducts: any[] = [];
     
     if (SERPAPI_KEY) {
-      console.log("Searching for exact model and similar products...");
+      console.log("Searching with ultra-precise filters...");
       
       const hasBrand = clothingInfo.brand && clothingInfo.brand !== "null" && clothingInfo.brand !== null;
       const hasModel = clothingInfo.modelName && clothingInfo.modelName !== "null" && clothingInfo.modelName !== null;
+      const category = (clothingInfo.garmentCategory || "").toLowerCase();
+      const material = (clothingInfo.material || "").toLowerCase();
+      const texture = (clothingInfo.texture || "").toLowerCase();
+      const color = (clothingInfo.color || "").toLowerCase();
       
-      // Build highly specific search queries
-      const exactQuery = hasModel
-        ? `${clothingInfo.brand || ''} ${clothingInfo.modelName} ${clothingInfo.color} comprar original`.trim()
-        : hasBrand 
-          ? `${clothingInfo.brand} ${clothingInfo.type} ${clothingInfo.color} ${clothingInfo.fit || ''} original`.trim()
-          : `${clothingInfo.type} ${clothingInfo.color} ${clothingInfo.pattern || ''} ${clothingInfo.fit || ''}`.trim();
+      // Detect if this is a knit/malha item
+      const isKnitItem = material.includes("tricô") || material.includes("malha") || material.includes("knit") || 
+                         texture.includes("tricotado") || texture.includes("knit") ||
+                         category.includes("tricô") || category.includes("malha") || category.includes("suéter");
       
-      const similarQuery = `${clothingInfo.type} ${clothingInfo.color} ${clothingInfo.pattern || ''} ${clothingInfo.gender || ''} comprar`.trim();
+      // Build search queries based on material type
+      let exactQuery: string;
+      let similarQuery: string;
       
-      // Add price filter to query if provided
-      let priceParam = "";
-      if (minPrice !== undefined && minPrice !== null) {
-        priceParam += `,price_min:${minPrice}`;
+      if (isKnitItem) {
+        exactQuery = hasBrand 
+          ? `${clothingInfo.brand} suéter tricô ${color} original`
+          : `suéter tricô malha ${color} ${clothingInfo.gender || ""} comprar`.trim();
+        similarQuery = `suéter tricô ${color} masculino comprar`;
+      } else {
+        exactQuery = hasBrand 
+          ? `${clothingInfo.brand} ${clothingInfo.type} ${color} original`
+          : `${clothingInfo.type} ${color} ${clothingInfo.gender || ""} comprar`.trim();
+        similarQuery = `${clothingInfo.type} ${color} ${clothingInfo.gender || ""} comprar`.trim();
       }
-      if (maxPrice !== undefined && maxPrice !== null) {
-        priceParam += `,price_max:${maxPrice}`;
-      }
       
+      console.log("Category:", category);
+      console.log("Material:", material);
+      console.log("Is knit item:", isKnitItem);
       console.log("Exact query:", exactQuery);
       console.log("Similar query:", similarQuery);
-      console.log("Price filter:", priceParam || "none");
       
       const storeMapping: Record<string, string> = {
         "Netshoes": "netshoes.com.br",
@@ -148,8 +161,6 @@ IMPORTANTE:
         "Riachuelo": "riachuelo.com.br",
         "Zara": "zara.com/br",
         "Hering": "hering.com.br",
-        "Marisa": "marisa.com.br",
-        "Centauro": "centauro.com.br",
         "Reserva": "usereserva.com",
         "Nike": "nike.com.br",
         "Adidas": "adidas.com.br",
@@ -157,85 +168,48 @@ IMPORTANTE:
         "Shopee": "shopee.com.br",
         "Mercado Livre": "mercadolivre.com.br",
         "Magazine Luiza": "magazineluiza.com.br",
-        "Americanas": "americanas.com.br",
         "Shein": "shein.com",
         "Youcom": "youcom.com.br",
         "Lacoste": "lacoste.com.br",
-        "Tommy": "tommy.com.br",
-        "Ralph Lauren": "ralphlauren.com.br",
-        "Puma": "puma.com.br",
-        "New Balance": "newbalance.com.br",
-        "Polo": "poloralphlauren.com.br",
+        "Osklen": "osklen.com.br",
+        "Richards": "richards.com.br",
+        "Aramis": "aramis.com.br",
       };
 
-      // Extended color synonyms with more precision
+      // Category groups for strict matching
+      const knitTerms = ["tricô", "trico", "tricot", "malha", "knit", "suéter", "sueter", "sweater", "pulôver", "pulover", "cardigan", "cardigã"];
+      const tshirtTerms = ["camiseta", "t-shirt", "tshirt", "tee"];
+      const poloTerms = ["polo", "piquet", "pique"];
+      const shirtTerms = ["camisa", "shirt"];
+
+      // Color synonyms
       const colorSynonyms: Record<string, string[]> = {
         "preto": ["preto", "black", "negro"],
-        "branco": ["branco", "white", "off-white", "creme", "gelo", "off white"],
+        "branco": ["branco", "white", "off-white", "creme", "gelo"],
         "azul": ["azul", "blue"],
-        "azul marinho": ["azul marinho", "navy", "azul escuro", "marinho", "navy blue"],
-        "azul royal": ["azul royal", "royal blue", "azul intenso", "azul vivo"],
-        "azul claro": ["azul claro", "azul bebê", "light blue", "celeste", "azul céu"],
+        "azul marinho": ["azul marinho", "navy", "azul escuro", "marinho"],
         "vermelho": ["vermelho", "red"],
-        "vinho": ["vinho", "bordô", "burgundy", "marsala", "bordeaux"],
+        "vinho": ["vinho", "bordô", "burgundy", "marsala"],
         "verde": ["verde", "green"],
         "verde musgo": ["verde musgo", "musgo", "verde escuro", "verde militar", "oliva"],
-        "verde claro": ["verde claro", "verde menta", "mint", "verde água"],
-        "amarelo": ["amarelo", "yellow", "mostarda", "dourado"],
-        "rosa": ["rosa", "pink", "rosé", "rosa claro", "rosa choque"],
-        "cinza": ["cinza", "grey", "gray", "mescla", "grafite", "chumbo"],
-        "bege": ["bege", "creme", "nude", "areia", "caramelo", "caqui"],
-        "marrom": ["marrom", "brown", "café", "chocolate", "terra", "caramelo"],
-        "laranja": ["laranja", "orange", "coral", "terracota"],
-        "roxo": ["roxo", "purple", "violeta", "lilás", "lavanda"],
+        "cinza": ["cinza", "grey", "gray", "mescla", "grafite"],
+        "bege": ["bege", "creme", "nude", "areia", "caramelo", "caqui", "off-white", "marfim", "camel", "kaki"],
+        "marrom": ["marrom", "brown", "café", "chocolate", "terra"],
       };
       
-      // Type synonyms for better matching
-      const typeSynonyms: Record<string, string[]> = {
-        "camisa": ["camisa", "shirt", "blusa"],
-        "camiseta": ["camiseta", "t-shirt", "tshirt", "tee", "blusa"],
-        "polo": ["polo", "piquet", "pique"],
-        "calça": ["calça", "pants", "trousers"],
-        "jeans": ["jeans", "denim", "calça jeans"],
-        "shorts": ["shorts", "bermuda", "short"],
-        "vestido": ["vestido", "dress"],
-        "saia": ["saia", "skirt"],
-        "blazer": ["blazer", "paletó", "terno"],
-        "jaqueta": ["jaqueta", "jacket", "casaco"],
-        "moletom": ["moletom", "hoodie", "moleton", "sweatshirt"],
-        "regata": ["regata", "tank", "cava"],
-      };
-      
-      const getColorVariants = (color: string): string[] => {
-        const variants: string[] = [color.toLowerCase()];
+      const getColorVariants = (colorStr: string): string[] => {
+        const variants: string[] = [colorStr];
         for (const [key, synonyms] of Object.entries(colorSynonyms)) {
-          if (color.toLowerCase().includes(key) || synonyms.some(s => color.toLowerCase().includes(s))) {
+          if (colorStr.includes(key) || synonyms.some(s => colorStr.includes(s))) {
             variants.push(...synonyms);
           }
         }
         return [...new Set(variants)];
       };
       
-      const getTypeVariants = (type: string): string[] => {
-        const variants: string[] = [type.toLowerCase()];
-        for (const [key, synonyms] of Object.entries(typeSynonyms)) {
-          if (type.toLowerCase().includes(key) || synonyms.some(s => type.toLowerCase().includes(s))) {
-            variants.push(...synonyms);
-          }
-        }
-        return [...new Set(variants)];
-      };
-      
-      const colorWord = clothingInfo.color.toLowerCase();
-      const colorVariants = getColorVariants(colorWord);
-      const typeVariants = getTypeVariants(clothingInfo.type);
-      const typeWords = clothingInfo.type.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
+      const colorVariants = getColorVariants(color);
       const brandLower = hasBrand ? clothingInfo.brand.toLowerCase() : "";
-      const modelLower = hasModel ? clothingInfo.modelName.toLowerCase() : "";
-      const patternLower = (clothingInfo.pattern || "").toLowerCase();
-      const fitLower = (clothingInfo.fit || "").toLowerCase();
       
-      // Parse price from string like "R$ 99,90" or "99.90"
       const parsePrice = (priceStr: string): number | null => {
         if (!priceStr) return null;
         const cleaned = priceStr.replace(/[^\d.,]/g, '').replace(',', '.');
@@ -243,12 +217,11 @@ IMPORTANTE:
         return isNaN(num) ? null : num;
       };
       
-      const processResults = (results: any[], requireExactMatch: boolean) => {
+      const processResults = (results: any[]) => {
         return results
           .filter((item: any) => {
             if (!item.thumbnail || !item.title) return false;
             
-            // Apply price filter
             const itemPrice = parsePrice(item.price || "");
             if (minPrice !== undefined && minPrice !== null && itemPrice !== null && itemPrice < minPrice) return false;
             if (maxPrice !== undefined && maxPrice !== null && itemPrice !== null && itemPrice > maxPrice) return false;
@@ -259,26 +232,38 @@ IMPORTANTE:
             const title = (item.title || "").toLowerCase();
             const source = (item.source || "").toLowerCase();
             
-            // STRICT Type matching - must match main type
-            let typeScore = 0;
-            let mainTypeMatch = false;
+            // STRICT Category matching
+            let categoryScore = 0;
+            let categoryMatch = false;
             
-            for (const typeVar of typeVariants) {
-              if (title.includes(typeVar)) {
-                typeScore += 25;
-                mainTypeMatch = true;
-                break;
+            if (isKnitItem) {
+              // For knit items - MUST have knit terms
+              const hasKnitTerm = knitTerms.some(t => title.includes(t));
+              const hasTshirtTerm = tshirtTerms.some(t => title.includes(t));
+              
+              if (hasKnitTerm) {
+                categoryScore = 50;
+                categoryMatch = true;
+              } else if (hasTshirtTerm) {
+                // This is a plain t-shirt, NOT a knit item - reject
+                categoryScore = -100;
+                categoryMatch = false;
+              } else {
+                categoryScore = 0;
+                categoryMatch = false;
+              }
+            } else {
+              // For non-knit items - match by type
+              const typeWords = clothingInfo.type.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
+              for (const word of typeWords) {
+                if (title.includes(word)) {
+                  categoryScore += 20;
+                  categoryMatch = true;
+                }
               }
             }
             
-            for (const word of typeWords) {
-              if (word.length > 3 && title.includes(word)) {
-                typeScore += 10;
-                if (word.length > 5) mainTypeMatch = true;
-              }
-            }
-            
-            // STRICT Color matching - must match color
+            // Color matching
             let colorScore = 0;
             let colorMatch = false;
             for (const colorVar of colorVariants) {
@@ -289,65 +274,20 @@ IMPORTANTE:
               }
             }
             
-            // Pattern matching
-            let patternScore = 0;
-            let patternMatch = patternLower === "liso"; // Plain patterns match anything
-            if (patternLower && patternLower !== "liso") {
-              if (title.includes(patternLower)) {
-                patternScore = 15;
-                patternMatch = true;
-              }
-            } else {
-              patternMatch = true;
-              patternScore = 5;
-            }
-            
-            // Fit matching
-            let fitScore = 0;
-            if (fitLower && title.includes(fitLower)) {
-              fitScore = 10;
-            }
-            
-            // Brand matching (for exact products)
+            // Brand matching
             let brandScore = 0;
             let isBrandMatch = false;
-            if (hasBrand) {
-              if (title.includes(brandLower) || source.includes(brandLower)) {
-                brandScore = 35;
-                isBrandMatch = true;
-              }
+            if (hasBrand && (title.includes(brandLower) || source.includes(brandLower))) {
+              brandScore = 35;
+              isBrandMatch = true;
             }
             
-            // Model name matching (for exact products)
-            let modelScore = 0;
-            let isModelMatch = false;
-            if (hasModel) {
-              const modelWords = modelLower.split(/\s+/).filter((w: string) => w.length > 2);
-              let matchedWords = 0;
-              for (const word of modelWords) {
-                if (title.includes(word)) matchedWords++;
-              }
-              if (matchedWords >= modelWords.length * 0.7) {
-                modelScore = 50;
-                isModelMatch = true;
-              } else if (matchedWords >= modelWords.length * 0.5) {
-                modelScore = 25;
-              }
-            }
+            const totalScore = categoryScore + colorScore + brandScore;
             
-            const totalScore = typeScore + colorScore + patternScore + fitScore + brandScore + modelScore;
+            const isExact = hasBrand ? isBrandMatch && categoryMatch && colorMatch && totalScore >= 90 : false;
+            const isSimilar = categoryMatch && colorMatch && categoryScore >= 30 && totalScore >= 60;
             
-            // For EXACT: must have brand + model match OR brand + very high type/color/pattern match
-            const isExact = hasModel 
-              ? isModelMatch && isBrandMatch && colorMatch
-              : hasBrand 
-                ? isBrandMatch && mainTypeMatch && colorMatch && totalScore >= 90
-                : false;
-            
-            // For SIMILAR: must have STRICT type + color match
-            const isSimilar = mainTypeMatch && colorMatch && patternMatch && totalScore >= 50;
-            
-            return { item, score: totalScore, isExact, isSimilar };
+            return { item, score: totalScore, isExact, isSimilar, categoryMatch, colorMatch };
           });
       };
       
@@ -372,7 +312,6 @@ IMPORTANTE:
           finalLink = `https://www.google.com/search?q=${encodeURIComponent(productTitle + " " + storeName + " comprar")}&btnI=1`;
         }
         
-        // Calculate realistic similarity
         const similarity = isExact 
           ? Math.min(99, 92 + Math.floor(score / 25))
           : Math.min(89, 75 + Math.floor(score / 20));
@@ -392,56 +331,48 @@ IMPORTANTE:
       };
       
       try {
-        // First search for exact matches
-        const serpUrl = `https://serpapi.com/search.json?engine=google_shopping&q=${encodeURIComponent(exactQuery)}&location=${encodeURIComponent(location || 'São Paulo, Brazil')}&hl=pt&gl=br&num=50&api_key=${SERPAPI_KEY}`;
+        const searchQueries = [exactQuery, similarQuery];
+        let allResults: any[] = [];
         
-        console.log("Fetching exact products...");
-        const serpResponse = await fetch(serpUrl);
-        const serpData = await serpResponse.json();
-        
-        if (serpData.shopping_results) {
-          const processed = processResults(serpData.shopping_results, true);
+        for (const query of searchQueries) {
+          const serpUrl = `https://serpapi.com/search.json?engine=google_shopping&q=${encodeURIComponent(query)}&location=${encodeURIComponent(location || 'São Paulo, Brazil')}&hl=pt&gl=br&num=50&api_key=${SERPAPI_KEY}`;
           
-          // Get ONLY truly exact matches (brand + model or very high score with brand)
-          const exactFiltered = processed
-            .filter((r: any) => r.isExact && r.score >= 85)
-            .sort((a: any, b: any) => b.score - a.score)
-            .slice(0, 4);
+          console.log("Fetching:", query);
+          const serpResponse = await fetch(serpUrl);
+          const serpData = await serpResponse.json();
           
-          // Get similar matches (strict type + color + pattern)
-          const similarFiltered = processed
-            .filter((r: any) => r.isSimilar && !r.isExact && r.score >= 55)
-            .sort((a: any, b: any) => b.score - a.score)
-            .slice(0, 8);
-          
-          exactProducts = exactFiltered.map((r: any, i: number) => createProduct(r.item, i, r.score, true));
-          similarProducts = similarFiltered.map((r: any, i: number) => createProduct(r.item, i, r.score, false));
-        }
-        
-        // If we need more similar products, do a broader search
-        if (similarProducts.length < 4) {
-          console.log("Searching for more similar products...");
-          
-          const similarUrl = `https://serpapi.com/search.json?engine=google_shopping&q=${encodeURIComponent(similarQuery)}&location=${encodeURIComponent(location || 'São Paulo, Brazil')}&hl=pt&gl=br&num=40&api_key=${SERPAPI_KEY}`;
-          
-          const similarResponse = await fetch(similarUrl);
-          const similarData = await similarResponse.json();
-          
-          if (similarData.shopping_results) {
-            const processed = processResults(similarData.shopping_results, false);
-            const filtered = processed
-              .filter((r: any) => r.isSimilar && r.score >= 50)
-              .sort((a: any, b: any) => b.score - a.score)
-              .slice(0, 8 - similarProducts.length);
-            
-            const existingIds = new Set(similarProducts.map((p: any) => p.productName?.toLowerCase()));
-            const newProducts = filtered
-              .filter((r: any) => !existingIds.has(r.item.title?.toLowerCase()))
-              .map((r: any, i: number) => createProduct(r.item, similarProducts.length + i, r.score, false));
-            
-            similarProducts = [...similarProducts, ...newProducts];
+          if (serpData.shopping_results) {
+            allResults = [...allResults, ...serpData.shopping_results];
           }
         }
+        
+        // Remove duplicates
+        const uniqueResults = allResults.filter((item, index, self) => 
+          index === self.findIndex(t => t.title === item.title)
+        );
+        
+        console.log(`Total unique results: ${uniqueResults.length}`);
+        
+        const processed = processResults(uniqueResults);
+        
+        const matchedCount = processed.filter((r: any) => r.categoryMatch && r.colorMatch).length;
+        console.log(`Products with category+color match: ${matchedCount}`);
+        
+        const exactFiltered = processed
+          .filter((r: any) => r.isExact && r.score >= 85)
+          .sort((a: any, b: any) => b.score - a.score)
+          .slice(0, 4);
+        
+        const similarFiltered = processed
+          .filter((r: any) => r.isSimilar && !r.isExact && r.score >= 60)
+          .sort((a: any, b: any) => b.score - a.score)
+          .slice(0, 8);
+        
+        exactProducts = exactFiltered.map((r: any, i: number) => createProduct(r.item, i, r.score, true));
+        similarProducts = similarFiltered.map((r: any, i: number) => createProduct(r.item, i, r.score, false));
+        
+        console.log(`Found ${exactProducts.length} exact and ${similarProducts.length} similar products`);
+        
       } catch (e) {
         console.error("SerpAPI error:", e);
       }
@@ -449,17 +380,14 @@ IMPORTANTE:
 
     const hasExact = exactProducts.length > 0;
     const hasSimilar = similarProducts.length > 0;
-    
-    console.log(`Found ${exactProducts.length} exact and ${similarProducts.length} similar products`);
 
-    // Build detailed message
     let message = null;
     if (!hasExact && !hasSimilar) {
-      message = "Não encontramos produtos correspondentes. Tente uma foto mais clara ou com melhor iluminação.";
+      message = "Não encontramos produtos correspondentes ao tipo e cor exatos. Tente uma foto mais clara.";
     } else if (!hasExact && hasSimilar) {
       const brandText = clothingInfo.brand ? ` da marca ${clothingInfo.brand}` : "";
-      const modelText = clothingInfo.modelName ? ` (modelo ${clothingInfo.modelName})` : "";
-      message = `Não encontramos a peça exata${brandText}${modelText}, mas encontramos opções extremamente semelhantes com a mesma cor e modelo!`;
+      const materialText = clothingInfo.material ? ` (${clothingInfo.material})` : "";
+      message = `Não encontramos a peça exata${brandText}${materialText}, mas encontramos opções do mesmo tipo e cor!`;
     }
 
     return new Response(JSON.stringify({ 

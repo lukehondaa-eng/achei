@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Sparkles, Shirt, Palette, Tag, Award, Layers } from "lucide-react";
+import { Sparkles, Shirt, Palette, Tag, Award, Layers, Scissors } from "lucide-react";
 
 interface AnalysisResultProps {
   analysis: {
@@ -9,6 +9,8 @@ interface AnalysisResultProps {
     brand?: string | null;
     modelName?: string | null;
     material?: string;
+    texture?: string;
+    garmentCategory?: string;
     pattern?: string;
     fit?: string;
     details?: string;
@@ -80,6 +82,16 @@ export const AnalysisResult = ({ analysis }: AnalysisResultProps) => {
             <p className="text-sm font-medium text-foreground capitalize">{analysis.style}</p>
           </div>
         </div>
+
+        {analysis.material && (
+          <div className="flex items-center gap-3">
+            <Scissors className="w-5 h-5 text-muted-foreground" />
+            <div>
+              <p className="text-xs text-muted-foreground">Material</p>
+              <p className="text-sm font-medium text-foreground capitalize">{analysis.material}</p>
+            </div>
+          </div>
+        )}
 
         {analysis.fit && (
           <div className="flex items-center gap-3">
